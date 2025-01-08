@@ -56,7 +56,6 @@ def convert_dataset_to_nii(root_dir, output_dir):
             os.makedirs(output_base)
 
         for timestamp in os.listdir(input_base):
-            print(f"Processing timestamp {timestamp}")
             timestamp_folder = os.path.join(input_base, timestamp)
             if not os.path.isdir(timestamp_folder):
                 continue
