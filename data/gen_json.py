@@ -2,7 +2,6 @@ import os
 import json
 import argparse
 
-
 parser = argparse.ArgumentParser(description="Generating json file linking all the input data as input to Swin-UNETR")
 parser.add_argument("--data_dir", default="./Dataset", type=str, help="input data directory")
 parser.add_argument("--output_file", default="test.json", type=str, help="output filename")
@@ -14,10 +13,16 @@ def generate_mhd_json(data_dir, output_file):
     imgs_dir = os.path.join(data_dir, "imgs")
     masks_dir = os.path.join(data_dir, "masks")
 
+    fold_counts = {0: 0, 1: 0}  # Dictionary to track fold counts
+
     # Traverse through the imgs directory to process files
     for img_file in sorted(os.listdir(imgs_dir)):
         if img_file.endswith(".nii.gz"):
             timestamp = os.path.splitext(os.path.splitext(img_file)[0])[0]  # Extract timestamp (e.g., '380' from '380.nii.gz')
+
+            # Determine fold assignment based on timestamp
+            fold = 1 if 380 <= int(timestamp) <= 780 else 0
+            fold_counts[fold] += 1
 
             # Construct relative paths for image and corresponding label
             image_path = os.path.join("imgs", img_file)
@@ -26,7 +31,7 @@ def generate_mhd_json(data_dir, output_file):
             # Ensure the label file exists in the masks directory
             if os.path.exists(os.path.join(masks_dir, f"{timestamp}.seg.nii.gz")):
                 data_structure["training"].append({
-                    "fold": 1,
+                    "fold": fold,
                     "image": [image_path] * 4,  # Repeat the image path 4 times
                     "label": label_path
                 })
@@ -36,6 +41,10 @@ def generate_mhd_json(data_dir, output_file):
     # Write the data structure to the output JSON file
     with open(output_file, "w") as json_file:
         json.dump(data_structure, json_file, indent=4)
+
+    # Print fold counts
+    print(f"Fold 1 has {fold_counts[1]} entries.")
+    print(f"Fold 0 has {fold_counts[0]} entries.")
 
 if __name__ == "__main__":
     args = parser.parse_args()

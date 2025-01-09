@@ -171,5 +171,5 @@ cython_debug/
 .pypirc
 
 # ignore weights logs
-./runs/*
-./outputs/*
+swin-unetr/runs/*
+swin-unetr/outputs/*
