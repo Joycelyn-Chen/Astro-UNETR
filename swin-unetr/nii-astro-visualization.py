@@ -38,7 +38,7 @@ def main():
     plt.imshow(img[:, :, args.slice_num], cmap="gray")
     plt.subplot(1, 3, 2)
     plt.title("label")
-    plt.imshow(label[:, :, args.slice_num])
+    plt.imshow(label[:, :, args.slice_num] * 255)
     plt.subplot(1, 3, 3)
     plt.title("segmentation")
     plt.imshow(seg[:, :, args.slice_num])
