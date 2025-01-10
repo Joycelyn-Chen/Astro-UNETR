@@ -53,4 +53,4 @@ if __name__ == "__main__":
 
     print(f"Done. Flipped images stored at {args.output_root}")
 
-# python img-flip-bw.py --input_root /home/joycelyn/Desktop/Dataset/MHD-3DIS/imgs --output /home/joycelyn/Desktop/Dataset/MHD-3DIS/imgs-bw-flipped
+# python img-flip-bw.py --input_root /home/joycelyn/Desktop/Dataset/MHD-3DIS/imgs --output_root /home/joycelyn/Desktop/Dataset/MHD-3DIS/imgs-bw-flipped
