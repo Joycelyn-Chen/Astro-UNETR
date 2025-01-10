@@ -62,7 +62,8 @@ video_dir = os.path.join(args.data_dir, str(args.timestamp))
 # so we need to clear the hydra instance
 hydra.core.global_hydra.GlobalHydra.instance().clear()
 # reinit hydra with a new search path for configs
-hydra.initialize_config_module("sam2.1_hiera_l.yaml", version_base='1.2')
+# hydra.initialize_config_module("configs", version_base='1.2')
+hydra.initialize_config_dir(config_dir="/home/joycelyn/Desktop/sam2/sam2/configs", version_base='1.2')
 
 
 sam2_checkpoint = os.path.join(args.sam2_root, "checkpoints/sam2.1_hiera_large.pt") 
