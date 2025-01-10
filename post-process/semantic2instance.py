@@ -1,4 +1,5 @@
 import os
+import cv2
 import numpy as np
 from skimage import measure
 from skimage.io import imsave
@@ -6,6 +7,10 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Converting semantic output from Swin-UNETR to instance level segmentation.")
 parser.add_argument("--data_dir", default="./Dataset", type=str, help="input data directory")
+parser.add_argument("--start_timestamp", type=int, required=True, help="Lower limit for timestamp range")
+parser.add_argument("--end_timestamp", type=int, required=True, help="Upper limit for timestamp range")
+
+# python semantic2instance.py --data_dir --start_timestamp --end_timestamp
 
 def compute_iou(mask1, mask2):
     """
@@ -15,19 +20,21 @@ def compute_iou(mask1, mask2):
     union = np.logical_or(mask1, mask2).sum()
     return intersection / union if union > 0 else 0
 
-def process_and_track_instances(masks_dir, tracks_dir):
+def process_and_track_instances(masks_dir, tracks_dir, lower_limit, upper_limit):
     """
     Perform 3D connected component analysis and track instances over time.
 
     Args:
         masks_dir (str): Path to the directory containing timestamp folders with slices.
         tracks_dir (str): Path to save instance tracklets.
+        start_timestamp (int): Lower bound of timestamp range to process.
+        end_timestamp (int): Upper bound of timestamp range to process.
     """
     # Ensure output directory exists
     os.makedirs(tracks_dir, exist_ok=True)
 
     # Sorted list of timestamps
-    timestamps = sorted(os.listdir(masks_dir), key=lambda x: int(x))
+    timestamps = sorted([ts for ts in os.listdir(masks_dir) if lower_limit <= int(ts) <= upper_limit], key=lambda x: int(x))
 
     # Dictionary to hold active tracks
     active_tracks = {}
@@ -108,5 +115,5 @@ if __name__ == "__main__":
     masks_dir = os.path.join(args.data_dir, 'masks')  # Directory containing semantic segmentation slices by timestamp
     tracks_dir = os.path.join(args.data_dir, 'SB_tracks')  # Directory to save tracked instances
     
-    process_and_track_instances(masks_dir, tracks_dir)
+    process_and_track_instances(masks_dir, tracks_dir, args.start_timestamp, args.end_timestamp)
     print("Processing and tracking complete.")
