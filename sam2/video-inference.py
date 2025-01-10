@@ -63,7 +63,7 @@ video_dir = os.path.join(args.data_dir, str(args.timestamp))
 hydra.core.global_hydra.GlobalHydra.instance().clear()
 # reinit hydra with a new search path for configs
 # hydra.initialize_config_module("configs", version_base='1.2')
-hydra.initialize_config_dir(config_dir="/home/joycelyn/Desktop/sam2/sam2/configs", version_base='1.2')
+hydra.initialize_config_dir(config_dir="/home/joycelyn/Desktop/sam2/sam2/configs/sam2.1", version_base='1.2')
 
 
 sam2_checkpoint = os.path.join(args.sam2_root, "checkpoints/sam2.1_hiera_large.pt") 
@@ -144,7 +144,7 @@ for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(
     }
 
 
-instance_out_dir = os.path.join(args.data_dir, 'SB_tracks', str(args.SB_ID), str(args.timestamp))
+instance_out_dir = os.path.join(args.data_dir, '..', 'SB_tracks', str(args.SB_ID), str(args.timestamp))
 os.makedirs(instance_out_dir, exist_ok=True)
 
 print("Saving the inference output...")
