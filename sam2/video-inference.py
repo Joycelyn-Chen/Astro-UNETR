@@ -17,6 +17,7 @@ parser.add_argument("--data_dir", default="./Dataset", type=str, help="input dat
 parser.add_argument("--SB_ID", default=230, type=int, help="SB ID for the target bubble")
 parser.add_argument("--center_x", default=150, type=int, help="center x for the target bubble")
 parser.add_argument("--center_y", default=178, type=int, help="center y for the target bubble")
+parser.add_argument("--center_z", default=130, type=int, help="center z for the target bubble")
 parser.add_argument("--bbox_x1", default=100, type=int, help="bounding box x1 coord for the target bubble")
 parser.add_argument("--bbox_x2", default=200, type=int, help="bounding box x2 coord for the target bubble")
 parser.add_argument("--bbox_y1", default=128, type=int, help="bounding box y1 coord for the target bubble")
@@ -90,7 +91,7 @@ inference_state = predictor.init_state(video_path=video_dir)
 
 # Add 1st click
 ann_frame_idx = 0  # the frame index we interact with
-ann_obj_id = args.SB_ID  # give a unique id to each object we interact with (it can be any integers)
+ann_obj_id = 1 # give a unique id to each object we interact with (it can be any integers)
 
 
 
@@ -106,8 +107,8 @@ _, out_obj_ids, out_mask_logits = predictor.add_new_points_or_box(
     labels=labels,
 )
 
-ann_frame_idx = 0  # the frame index we interact with
-ann_obj_id = 1  # give a unique id to each object we interact with (it can be any integers)
+ann_frame_idx = args.center_z  # the frame index we interact with
+ann_obj_id = args.SB_ID   # give a unique id to each object we interact with (it can be any integers)
 
 
 print("Adding point and bbox prompt to predictor...")
