@@ -21,6 +21,8 @@ from utils.data_utils import get_loader, get_astro_loader
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import SwinUNETR
 
+# python test.py --json_list=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/MHD-NII.json --data_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --feature_size=48 --infer_overlap=0.6 --pretrained_model_name=model_final.pt --pretrained_dir=runs/astro-unetr --workers 0 --exp_name test-astro-nii-0111
+
 parser = argparse.ArgumentParser(description="Swin UNETR segmentation pipeline")
 parser.add_argument("--data_dir", default="/dataset/dataset0/", type=str, help="dataset directory")
 parser.add_argument("--exp_name", default="test1", type=str, help="experiment name")

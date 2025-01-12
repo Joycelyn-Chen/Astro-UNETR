@@ -5,7 +5,7 @@
 #   - slice_num: the slice number to be plotted out
 #   - timestamp: the timestamp of interest
 
-# Usage: python nii-astrovisualization.py --mask_dir ./outputs/official_pretrained --slice_num 67 --timestamp 380
+# Usage: python nii-astro-visualization.py --mask_dir ./outputs/test-astro-nii-0111 --slice_num 67 --timestamp 380
 # Will store the result under mask_dir, with case number and slice number as .png image
 
 

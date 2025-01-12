@@ -30,6 +30,8 @@ from monai.networks.nets import SwinUNETR
 from monai.transforms import Activations, AsDiscrete, Compose
 from monai.utils.enums import MetricReduction
 
+# python main.py --json_list=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/MHD-NII.json --data_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII --val_every=5 --batch_size=2 --roi_x=128 --roi_y=128 --roi_z=128  --in_channels=4 --spatial_dims=3 --use_checkpoint --feature_size=48 --logdir=astro-unetr --fold=0 --optim_lr=1e-4 --lrschedule=warmup_cosine --infer_overlap=0.5 --save_checkpoint --noamp --workers=0 --pretrained_model_name=model.pt --pretrained_dir=/media/joycelyn/HDD1/home/joycelyn/Medical-3DIS/research-contributions/SwinUNETR/BRATS21/pretrained_models/fold0_f48_ep300_4gpu_dice0_8854/ --max_epochs 100
+
 parser = argparse.ArgumentParser(description="Swin UNETR segmentation pipeline for BRATS Challenge")
 parser.add_argument("--checkpoint", default=None, help="start training from saved checkpoint")
 parser.add_argument("--logdir", default="test", type=str, help="directory to save the tensorboard logs")
