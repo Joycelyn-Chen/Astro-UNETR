@@ -7,6 +7,13 @@ import hydra
 from sam2.build_sam import build_sam2_video_predictor
 from utils import save_mask
 
+# python instance_tracking.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS --timestamp 390
+
+def show_point(img, point, color=(0, 255, 0)):
+    cv.circle(img, (int(point[0]), int(point[1])), radius=5, color=color, thickness=-1)
+
+def show_box(img, bbox, color=(0, 0, 255)):
+    cv.rectangle(img, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
 
 def initialize_predictor(args, device):
     hydra.core.global_hydra.GlobalHydra.instance().clear()
@@ -38,18 +45,38 @@ def get_bounding_boxes(mask_dir):
     
     return np.array(bboxes, dtype=object)
 
+
 def extract_random_slices(bboxes, num_slices=3):
-    valid_slices = []
+    non_zero_slices = []
+
+    # Collect all non-zero bounding box slices
     for z, bbox in enumerate(bboxes):
         if len(bbox) > 0:
-            valid_slices.append((bbox, z))
-        if len(valid_slices) == num_slices:
-            break
-    if len(valid_slices) < num_slices:
-        raise ValueError("Not enough non-empty bounding box slices available.")
-    return valid_slices #np.array(valid_slices)
+            non_zero_slices.append((bbox, bbox[4]))
 
-# python instance_tracking.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS --timestamp 390
+    if len(non_zero_slices) < num_slices:
+        raise ValueError("Not enough non-empty bounding box slices available.")
+
+    # Calculate specific slices
+    first_slice_idx = len(non_zero_slices) // 3
+    middle_slice_idx = len(non_zero_slices) // 2
+    last_slice_idx = middle_slice_idx + len(non_zero_slices) // 6
+
+    selected_slices = [
+        non_zero_slices[first_slice_idx],
+        non_zero_slices[middle_slice_idx],
+        non_zero_slices[last_slice_idx]
+    ]
+
+    return selected_slices
+
+
+def annotate_bbox_and_points(frame, bbox, center_point):
+    show_box(frame, bbox)
+    show_point(frame, center_point)
+    cv.imshow("Annotated Frame", frame)
+    cv.waitKey(32)
+
 
 def main():
     parser = argparse.ArgumentParser(description="3D Instance Tracking using SAM2")
@@ -73,6 +100,7 @@ def main():
     previous_dir = os.path.join(args.data_dir, "SB_tracks", str(args.SB_ID), f"{args.timestamp - args.time_interval}")
 
     bboxes = get_bounding_boxes(previous_dir)
+
 
     frame_names = sorted([
         p for p in os.listdir(current_dir)
@@ -99,23 +127,81 @@ def main():
 
     slices = extract_random_slices(bboxes)
 
-    for bbox, z_coord in slices:
-    # for bbox in bboxes[np.random.choice(len(bboxes), 3, replace=False)]:
+    # for bbox, z_coord in slices:
+    # # for bbox in bboxes[np.random.choice(len(bboxes), 3, replace=False)]:
 
-        bbox[:2] = [int(x - x * args.bbox_expand_rate) for x in bbox[:2]] #bbox[:2] * args.bbox_expand_rate
-        bbox[2:4] = [int(x + x * args.bbox_expand_rate) for x in bbox[2:4]] #bbox[2:4] * args.bbox_expand_rate
-        # z_coord = int(bbox[4])  # Extract z coordinate from the bounding box
-        bbox_tensor = np.array(bbox[:4], dtype=np.float32)  # Convert bbox to tensor with dtype=float32
+    #     bbox[:2] = [int(x - x * args.bbox_expand_rate) for x in bbox[:2]] #bbox[:2] * args.bbox_expand_rate
+    #     bbox[2:4] = [int(x + x * args.bbox_expand_rate) for x in bbox[2:4]] #bbox[2:4] * args.bbox_expand_rate
+    #     # z_coord = int(bbox[4])  # Extract z coordinate from the bounding box
+    #     bbox_tensor = np.array(bbox[:4], dtype=np.float32)  # Convert bbox to tensor with dtype=float32
         
         
+    #     predictor.add_new_points_or_box(
+    #         inference_state=inference_state,
+    #         frame_idx=int(z_coord),  # Use the z coordinate from the bounding box
+    #         obj_id=args.SB_ID,
+    #         points=center_point,
+    #         labels=labels,
+    #         box=bbox_tensor  # Exclude the z coordinate from the bounding box input
+    #     )
+    confirmed_bboxes = []
+
+    for bbox, z_coord in slices:
+        prev_masks = os.path.join('/'.join(current_dir.split('/')[:-1]), str(args.timestamp - args.time_interval))
+        frame_path = os.path.join(prev_masks, f"{z_coord}.jpg")
+        
+        # DEBUG
+        print(f"Reading frame from: {frame_path}")
+        frame = cv.imread(frame_path) #, cv.IMREAD_GRAYSCALE)
+
+        
+        if frame is None:
+            print(f"Frame {z_coord} not found.")
+            continue
+
+        bbox[:2] = [int(x - x * args.bbox_expand_rate) for x in bbox[:2]]
+        bbox[2:4] = [int(x + x * args.bbox_expand_rate) for x in bbox[2:4]]
+
+        center_point = [args.center_y, args.center_x]
+
+        while True:
+            annotate_bbox_and_points(frame, bbox, center_point)
+            key = input("Confirm annotation? (y/n): ")
+            cv.destroyAllWindows()
+
+            if key.lower() == 'y':
+                confirmed_bboxes.append((bbox, center_point, z_coord))
+                # cv.destroyAllWindows()
+                break
+            elif key.lower() == 'n':
+                print(f"Current bounding box: {bbox}")
+                print(f"Current center point: {center_point}")
+                
+                new_x = int(input("Enter new center x: "))
+                new_y = int(input("Enter new center y: "))
+                bbox = [
+                    int(input("Enter new bbox x_min: ")),
+                    int(input("Enter new bbox y_min: ")),
+                    int(input("Enter new bbox x_max: ")),
+                    int(input("Enter new bbox y_max: "))
+                ]
+                center_point = [new_y, new_x]
+
+
+    for bbox, center_point, z_coord in confirmed_bboxes:
+        bbox_tensor = np.array(bbox[:4], dtype=np.float32)
         predictor.add_new_points_or_box(
-            inference_state=inference_state,
-            frame_idx=int(z_coord),  # Use the z coordinate from the bounding box
+            inference_state=inference_state,  # Replace with actual inference state
+            frame_idx=z_coord,
             obj_id=args.SB_ID,
-            points=center_point,
-            labels=labels,
-            box=bbox_tensor  # Exclude the z coordinate from the bounding box input
+            points=np.array([center_point], dtype=np.float32),
+            labels=np.array([1], dtype=np.int32),
+            box=bbox_tensor
         )
+        # DEBUG
+        print(f"Added box for frame {z_coord}")
+
+    print("All bounding boxes confirmed. Proceeding with propagation...")
 
     video_segments = {}
     for out_frame_idx, out_obj_ids, out_mask_logits in predictor.propagate_in_video(inference_state):
