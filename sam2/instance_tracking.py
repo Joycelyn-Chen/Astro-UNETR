@@ -23,14 +23,37 @@ def get_bounding_boxes(mask_dir):
         mask_path = os.path.join(mask_dir, mask_file)
         mask = cv.imread(mask_path, cv.IMREAD_GRAYSCALE)
         contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        for contour in contours:
-            x, y, w, h = cv.boundingRect(contour)
-            bboxes.append([x, y, x + w, y + h])
-    return np.array(bboxes, dtype=np.float32)
+        z = int(os.path.splitext(mask_file)[0])  # Extract z coordinate from filename
+        if contours:
+            x_min, y_min, x_max, y_max = float('inf'), float('inf'), float('-inf'), float('-inf')
+            for contour in contours:
+                x, y, w, h = cv.boundingRect(contour)
+                x_min = min(x_min, x)
+                y_min = min(y_min, y)
+                x_max = max(x_max, x + w)
+                y_max = max(y_max, y + h)
+            bboxes.append([x_min, y_min, x_max, y_max, z])
+        else:
+            bboxes.append([])  # Add an empty list to preserve z structure
+    
+    return np.array(bboxes, dtype=object)
+
+def extract_random_slices(bboxes, num_slices=3):
+    valid_slices = []
+    for z, bbox in enumerate(bboxes):
+        if len(bbox) > 0:
+            valid_slices.append((bbox, z))
+        if len(valid_slices) == num_slices:
+            break
+    if len(valid_slices) < num_slices:
+        raise ValueError("Not enough non-empty bounding box slices available.")
+    return valid_slices #np.array(valid_slices)
+
+# python instance_tracking.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS --timestamp 390
 
 def main():
     parser = argparse.ArgumentParser(description="3D Instance Tracking using SAM2")
-    parser.add_argument("--data_dir", default="./Dataset", type=str, help="Input data directory")
+    parser.add_argument("--data_dir", default="/home/joycelyn/Desktop/Dataset/MHD-3DIS", type=str, help="Input data directory")
     parser.add_argument("--SB_ID", default=230, type=int, help="SB ID for the target bubble")
     parser.add_argument("--center_x", default=150, type=int, help="Center x of the target bubble")
     parser.add_argument("--center_y", default=178, type=int, help="Center y of the target bubble")
@@ -38,13 +61,14 @@ def main():
     parser.add_argument("--timestamp", default=380, type=int, help="Timestamp of interest")
     parser.add_argument("--time_interval", default=10, type=int, help="Timestamp increment interval")
     parser.add_argument("--sam2_root", default="/home/joycelyn/Desktop/sam2", type=str, help="Path to SAM2 root directory")
+    parser.add_argument("--bbox_expand_rate", default=0.1, type=float, help="Bbox expand rate from previous timestamp")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     predictor = initialize_predictor(args, device)
 
     current_dir = os.path.join(args.data_dir, f"masks-jpg/{args.timestamp}")
-    previous_dir = os.path.join(args.data_dir, f"masks-jpg/{args.timestamp - args.time_interval}")
+    previous_dir = os.path.join(args.data_dir, "SB_tracks", str(args.SB_ID), f"{args.timestamp - args.time_interval}")
 
     bboxes = get_bounding_boxes(previous_dir)
 
@@ -70,17 +94,28 @@ def main():
     # Add center point and bounding boxes
     center_point = np.array([[args.center_y, args.center_x]], dtype=np.float32)
     labels = np.array([1], dtype=np.int32)
-    for bbox in bboxes[np.random.choice(len(bboxes), 3, replace=False)]:
-        bbox[:2] -= bbox[2:4] * 0.1
-        bbox[2:4] += bbox[2:4] * 0.1
-        z_coord = int(bbox[4])  # Extract z coordinate from the bounding box
+
+    slices = extract_random_slices(bboxes)
+
+    for bbox, z_coord in slices:
+    # for bbox in bboxes[np.random.choice(len(bboxes), 3, replace=False)]:
+        # DEBUG
+        print(f"bbox: {bbox}\n\n")
+
+        bbox[:2] = [int(x - x * args.bbox_expand_rate) for x in bbox[:2]] #bbox[:2] * args.bbox_expand_rate
+        bbox[2:4] = [int(x + x * args.bbox_expand_rate) for x in bbox[2:4]] #bbox[2:4] * args.bbox_expand_rate
+        # z_coord = int(bbox[4])  # Extract z coordinate from the bounding box
+        bbox_tensor = np.array(bbox[:4], dtype=np.float32)  # Convert bbox to tensor with dtype=float32
+        
+        
+        
         predictor.add_new_points_or_box(
             inference_state=inference_state,
-            frame_idx=z_coord,  # Use the z coordinate from the bounding box
+            frame_idx=int(z_coord),  # Use the z coordinate from the bounding box
             obj_id=args.SB_ID,
             points=center_point,
             labels=labels,
-            box=bbox[:4]  # Exclude the z coordinate from the bounding box input
+            box=bbox_tensor  # Exclude the z coordinate from the bounding box input
         )
 
     video_segments = {}
@@ -90,7 +125,7 @@ def main():
             for i, out_obj_id in enumerate(out_obj_ids)
         }
 
-    output_dir = os.path.join(args.data_dir, '..', "SB_tracks", str(args.SB_ID), str(args.timestamp))
+    output_dir = os.path.join(args.data_dir, "SB_tracks", str(args.SB_ID), str(args.timestamp))
     os.makedirs(output_dir, exist_ok=True)
 
     for out_frame_idx, segment_data in video_segments.items():
