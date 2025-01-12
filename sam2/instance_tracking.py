@@ -65,6 +65,8 @@ def main():
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
+
     predictor = initialize_predictor(args, device)
 
     current_dir = os.path.join(args.data_dir, f"masks-jpg/{args.timestamp}")
@@ -99,14 +101,11 @@ def main():
 
     for bbox, z_coord in slices:
     # for bbox in bboxes[np.random.choice(len(bboxes), 3, replace=False)]:
-        # DEBUG
-        print(f"bbox: {bbox}\n\n")
 
         bbox[:2] = [int(x - x * args.bbox_expand_rate) for x in bbox[:2]] #bbox[:2] * args.bbox_expand_rate
         bbox[2:4] = [int(x + x * args.bbox_expand_rate) for x in bbox[2:4]] #bbox[2:4] * args.bbox_expand_rate
         # z_coord = int(bbox[4])  # Extract z coordinate from the bounding box
         bbox_tensor = np.array(bbox[:4], dtype=np.float32)  # Convert bbox to tensor with dtype=float32
-        
         
         
         predictor.add_new_points_or_box(
