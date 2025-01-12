@@ -114,7 +114,7 @@ ann_obj_id = args.SB_ID   # give a unique id to each object we interact with (it
 print("Adding point and bbox prompt to predictor...")
 # Let's add a 2nd positive click at (x, y) = (250, 220) to refine the mask
 # sending all clicks (and their labels) to `add_new_points_or_box`
-points = np.array([[args.center_x, args.center_y]], dtype=np.float32)
+points = np.array([[args.center_y, args.center_x]], dtype=np.float32)
 box = np.array([args.bbox_x1, args.bbox_y1, args.bbox_x2, args.bbox_y2], dtype=np.float32)
 # for labels, `1` means positive click and `0` means negative click
 labels = np.array([1], np.int32)
