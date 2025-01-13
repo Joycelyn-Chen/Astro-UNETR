@@ -37,7 +37,7 @@ def get_bounding_boxes(mask_dir):
                 x, y, w, h = cv.boundingRect(contour)
                 center_x = x + w // 2
                 center_y = y + h // 2
-                points.append((center_x, center_y))
+                points.append((center_y, center_x))
             bbox_points[z] = points
     return bbox_points
 
@@ -63,7 +63,7 @@ def annotate_points_and_confirm(frame, z_coord, points):
             for i in range(num_points):
                 x = int(input(f"Enter x coordinate for point {i+1}: "))
                 y = int(input(f"Enter y coordinate for point {i+1}: "))
-                updated_points.append((x, y))
+                updated_points.append((y, x))
             points = updated_points
             frame_copy = frame.copy()
             # for point in points:
