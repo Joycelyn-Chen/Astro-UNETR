@@ -39,7 +39,7 @@ def create_masks(data_dir):
                     _, binary_mask = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                     
                     # convert mask values from 255 to 1
-                    binary_mask = binary_mask / 255
+                    # binary_mask = binary_mask / 255
 
                     # Save the binary mask as a .png file in the corresponding masks/ folder
                     mask_filename = os.path.splitext(filename)[0] + ".png"
