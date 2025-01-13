@@ -9,7 +9,7 @@ parser.add_argument("--data_dir", default="./Dataset", type=str, help="input dat
 parser.add_argument("--start_z", type=int, required=True, help="lower limit for z-coordinate range")
 parser.add_argument("--end_z", type=int, required=True, help="upper limit for z-coordinate range")
 
-# python remove-unwanted-masks.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/SB_tracks/230/410 --start_z 143 --end_z 253
+# python remove-unwanted-masks.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/SB_tracks/230/410 --start_z 0 --end_z 223
 
 def process_images(data_dir, start_z, end_z):
     """

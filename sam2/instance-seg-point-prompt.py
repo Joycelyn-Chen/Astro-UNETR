@@ -37,7 +37,7 @@ def get_bounding_boxes(mask_dir):
                 x, y, w, h = cv.boundingRect(contour)
                 center_x = x + w // 2
                 center_y = y + h // 2
-                points.append((center_y, center_x))
+                points.append((center_x, center_y))
             bbox_points[z] = points
     return bbox_points
 
@@ -63,7 +63,7 @@ def annotate_points_and_confirm(frame, z_coord, points):
             for i in range(num_points):
                 x = int(input(f"Enter x coordinate for point {i+1}: "))
                 y = int(input(f"Enter y coordinate for point {i+1}: "))
-                updated_points.append((y, x))
+                updated_points.append((x, y))
             points = updated_points
             frame_copy = frame.copy()
             # for point in points:
@@ -95,11 +95,22 @@ def main():
 
     inference_state = predictor.init_state(video_path=current_dir)
 
+    # Add negative click at (5, 5)
+    points = np.array([[5, 5]], dtype=np.float32)
+    labels = np.array([0], dtype=np.int32)
+    predictor.add_new_points_or_box(
+        inference_state=inference_state,
+        frame_idx=0,
+        obj_id=1,
+        points=points,
+        labels=labels
+    )
+
     for z_coord, points in bbox_points.items():
         frame_path = os.path.join(current_dir, f"{z_coord}.jpg")
         frame = cv.imread(frame_path)
         #DEBUG
-        print(f"Reading from {frame_path}, pointsL {points}")
+        print(f"Reading from {frame_path}, points: {points}")
         if frame is None:
             print(f"Frame {z_coord} not found.")
             continue
