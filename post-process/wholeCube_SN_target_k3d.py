@@ -14,7 +14,7 @@ hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
 low_x0, low_y0, low_w, low_h, bottom_z, top_z = 0, 0, 1000, 1000, 0, 1000
 range_coord = [low_x0, low_y0, low_w, low_h, bottom_z, top_z]
 
-# python post-process/wholeCube_SN_target_k3d.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -m ~/Desktop/Dataset/MHD-3DIS/SB_tracks/230 -k /home/joy0921/Desktop/Dataset/MHD-3DIS/htmls -st 380 -et 420
+# python post-process/wholeCube_SN_target_k3d.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -m ~/Desktop/Dataset/MHD-3DIS/SB_tracks/230 -k /home/joy0921/Desktop/Dataset/MHD-3DIS/htmls -st 380 -et 420 -i 10
 
 def update_pos_pix256(filtered_data):
     converted_points = list(zip(
