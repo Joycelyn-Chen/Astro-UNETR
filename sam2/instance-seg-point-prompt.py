@@ -7,6 +7,8 @@ import hydra
 from sam2.build_sam import build_sam2_video_predictor
 from utils import save_mask
 
+# python instance-seg-point-prompt.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS --timestamp 410
+
 def show_point(img, point, color=(0, 255, 0)):
     cv.circle(img, (int(point[0]), int(point[1])), radius=5, color=color, thickness=-1)
 
@@ -30,12 +32,13 @@ def get_bounding_boxes(mask_dir):
         contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         z = int(os.path.splitext(mask_file)[0])
         points = []
-        for contour in contours:
-            x, y, w, h = cv.boundingRect(contour)
-            center_x = x + w // 2
-            center_y = y + h // 2
-            points.append((center_x, center_y))
-        bbox_points[z] = points
+        if contours:
+            for contour in contours:
+                x, y, w, h = cv.boundingRect(contour)
+                center_x = x + w // 2
+                center_y = y + h // 2
+                points.append((center_x, center_y))
+            bbox_points[z] = points
     return bbox_points
 
 def extract_random_slices(mask_dir):
@@ -43,15 +46,15 @@ def extract_random_slices(mask_dir):
     return bbox_points
 
 def annotate_points_and_confirm(frame, z_coord, points):
-    for point in points:
-        show_point(frame, point)
-    cv.imshow(f"Annotated Frame - Slice {z_coord}", frame)
-    cv.waitKey(32)
+    # for point in points:
+        # show_point(frame, point)
+    # cv.imshow(f"Annotated Frame - Slice {z_coord}", frame)
+    # cv.waitKey(32)
 
     while True:
         key = input("Confirm points for slice {}? (y/n): ".format(z_coord))
         if key.lower() == 'y':
-            cv.destroyAllWindows()
+            # cv.destroyAllWindows()
             return points
         elif key.lower() == 'n':
             print(f"Current points: {points}")
@@ -63,10 +66,10 @@ def annotate_points_and_confirm(frame, z_coord, points):
                 updated_points.append((x, y))
             points = updated_points
             frame_copy = frame.copy()
-            for point in points:
-                show_point(frame_copy, point)
-            cv.imshow(f"Updated Annotated Frame - Slice {z_coord}", frame_copy)
-            cv.waitKey(32)
+            # for point in points:
+            #     show_point(frame_copy, point)
+            # cv.imshow(f"Updated Annotated Frame - Slice {z_coord}", frame_copy)
+            # cv.waitKey(32)
 
 def main():
     parser = argparse.ArgumentParser(description="3D Instance Tracking using SAM2")
@@ -95,6 +98,8 @@ def main():
     for z_coord, points in bbox_points.items():
         frame_path = os.path.join(current_dir, f"{z_coord}.jpg")
         frame = cv.imread(frame_path)
+        #DEBUG
+        print(f"Reading from {frame_path}, pointsL {points}")
         if frame is None:
             print(f"Frame {z_coord} not found.")
             continue
