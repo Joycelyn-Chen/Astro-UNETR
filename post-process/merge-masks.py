@@ -68,4 +68,4 @@ if __name__ == "__main__":
     
     merge_masks(args.timestamp, args.mask1_dir, args.mask2_dir, args.output_root)
 
-# python merge-masks.py --mask1_dir /home/joy0921/Desktop/Dataset/img_pix256/masks/SB-large/SB230 --mask2_dir /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks-merged --timestamp 380
+# python merge-masks.py --mask1_dir /home/joy0921/Desktop/Dataset/img_pix256/masks/SB-large/SB230 --mask2_dir /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks-merged --timestamp 420
