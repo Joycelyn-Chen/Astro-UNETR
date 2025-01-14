@@ -65,7 +65,7 @@ def annotate_points_and_confirm(frame, z_coord, points):
                 y = int(input(f"Enter y coordinate for point {i+1}: "))
                 updated_points.append((x, y))
             points = updated_points
-            frame_copy = frame.copy()
+            # frame_copy = frame.copy()
             # for point in points:
             #     show_point(frame_copy, point)
             # cv.imshow(f"Updated Annotated Frame - Slice {z_coord}", frame_copy)
@@ -81,6 +81,8 @@ def main():
     parser.add_argument("--timestamp", default=380, type=int, help="Timestamp of interest")
     parser.add_argument("--time_interval", default=10, type=int, help="Timestamp increment interval")
     parser.add_argument("--sam2_root", default="/home/joycelyn/Desktop/sam2", type=str, help="Path to SAM2 root directory")
+    parser.add_argument("--interactive_confirmation", action="store_true", help="Enable interactive point confirmation prompting")
+
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -106,25 +108,55 @@ def main():
         labels=labels
     )
 
+    # for z_coord, points in bbox_points.items():
+    #     frame_path = os.path.join(current_dir, f"{z_coord}.jpg")
+    #     frame = cv.imread(frame_path)
+    #     #DEBUG
+    #     print(f"Reading from {frame_path}, points: {points}")
+    #     if frame is None:
+    #         print(f"Frame {z_coord} not found.")
+    #         continue
+
+    #     confirmed_points = annotate_points_and_confirm(frame, z_coord, points)
+
+    #     for point in confirmed_points:
+    #         predictor.add_new_points_or_box(
+    #             inference_state=inference_state,  
+    #             frame_idx=z_coord,
+    #             obj_id=args.SB_ID,
+    #             points=np.array([point], dtype=np.float32),
+    #             labels=np.array([1], dtype=np.int32)
+    #         )
+    # Updated part of the code
     for z_coord, points in bbox_points.items():
+        # Only process every other 10 z slices
+        if z_coord % 10 != 0:  # Skip slices that are not multiples of 20
+            continue
+
         frame_path = os.path.join(current_dir, f"{z_coord}.jpg")
         frame = cv.imread(frame_path)
-        #DEBUG
+        # DEBUG
         print(f"Reading from {frame_path}, points: {points}")
+        
         if frame is None:
             print(f"Frame {z_coord} not found.")
             continue
 
-        confirmed_points = annotate_points_and_confirm(frame, z_coord, points)
+        # Check if interactive confirmation is enabled
+        if args.interactive_confirmation:
+            confirmed_points = annotate_points_and_confirm(frame, z_coord, points)
+        else:
+            confirmed_points = points  # Skip confirmation if disabled
 
         for point in confirmed_points:
             predictor.add_new_points_or_box(
-                inference_state=inference_state,  
+                inference_state=inference_state,
                 frame_idx=z_coord,
                 obj_id=args.SB_ID,
                 points=np.array([point], dtype=np.float32),
                 labels=np.array([1], dtype=np.int32)
             )
+
 
     print("All points confirmed. Proceeding with propagation...")
     video_segments = {}
