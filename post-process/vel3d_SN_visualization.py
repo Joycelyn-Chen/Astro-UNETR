@@ -3,10 +3,12 @@ import yt
 import numpy as np
 import k3d
 from k3d import matplotlib_color_maps
-import cv2 as cv
 import argparse
 
 from utils import *
+
+DEBUG = True
+hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
 
 def get_velocity_data(obj, x_range, y_range, z_range):
     """
@@ -69,7 +71,7 @@ def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, k3d_
 
     # fig.display()
     with open(os.path.join(k3d_root, f'{time_Myr}.html'),'w') as fp:
-        fp.write(plot.get_snapshot())
+        fp.write(fig.get_snapshot())
 
     if(DEBUG):
         print("Done. Plot file stored at {}".format(f'{k3d_root}/{time_Myr}.html'))
