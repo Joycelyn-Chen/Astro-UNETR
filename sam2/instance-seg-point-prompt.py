@@ -82,6 +82,7 @@ def main():
     parser.add_argument("--time_interval", default=10, type=int, help="Timestamp increment interval")
     parser.add_argument("--sam2_root", default="/home/joycelyn/Desktop/sam2", type=str, help="Path to SAM2 root directory")
     parser.add_argument("--interactive_confirmation", action="store_true", help="Enable interactive point confirmation prompting")
+    parser.add_argument("--annotation_stride", default=5, type=int, help="The stride frame number for annotation point prompts")
 
     args = parser.parse_args()
 
@@ -130,7 +131,7 @@ def main():
     # Updated part of the code
     for z_coord, points in bbox_points.items():
         # Only process every other 10 z slices
-        if z_coord % 10 != 0:  # Skip slices that are not multiples of 20
+        if z_coord % args.annotation_stride != 0:  # Skip slices that are not multiples of 20
             continue
 
         frame_path = os.path.join(current_dir, f"{z_coord}.jpg")
