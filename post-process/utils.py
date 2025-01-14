@@ -159,3 +159,35 @@ def plot_dens_z(dens, center_z):
     plt.ylabel('Y')
     # fig.savefig(f'../expanding_velocity/{time_Myr}/dzoom_{center_z}.png')
     plt.show()
+
+def update_pos_pix256(filtered_data):
+    converted_points = list(zip(
+        pc2pix_256(filtered_data['posx_pc']) + 128,
+        pc2pix_256(filtered_data['posy_pc']) + 128,
+        pc2pix_256(filtered_data['posz_pc']) + 128
+    ))
+    # Converting the list of tuples into separate lists
+    posx_pix256, posy_pix256, posz_pix256 = zip(*converted_points)
+
+    # Adding the new columns to the DataFrame
+    filtered_data['posx_pix256'] = posx_pix256
+    filtered_data['posy_pix256'] = posy_pix256
+    filtered_data['posz_pix256'] = posz_pix256
+
+    return converted_points, filtered_data
+
+def segment_cube_roi(args, dens_cube, mask_cube):
+    for current_z in range(args.upper_bound - args.lower_bound):
+        dens_slice = normalize4thresholding(dens_cube[:, :, current_z + args.lower_bound]) 
+        
+        # threshold + connected component
+        binary_mask = apply_otsus_thresholding(dens_slice)
+        _, labels, _, _ = cv2.connectedComponentsWithStats(binary_mask, connectivity=8)
+
+        # retrieve all mask only
+        i = 0
+        binary_mask = labels == i
+        binary_mask = ~binary_mask
+        mask_cube[:, :, current_z] = binary_mask
+
+    return mask_cube

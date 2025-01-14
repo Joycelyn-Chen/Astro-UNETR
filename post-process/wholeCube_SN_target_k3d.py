@@ -16,37 +16,8 @@ range_coord = [low_x0, low_y0, low_w, low_h, bottom_z, top_z]
 
 # python post-process/wholeCube_SN_target_k3d.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -m ~/Desktop/Dataset/MHD-3DIS/SB_tracks/230 -k /home/joy0921/Desktop/Dataset/MHD-3DIS/htmls -st 380 -et 420 -i 10
 
-def update_pos_pix256(filtered_data):
-    converted_points = list(zip(
-        pc2pix_256(filtered_data['posx_pc']) + 128,
-        pc2pix_256(filtered_data['posy_pc']) + 128,
-        pc2pix_256(filtered_data['posz_pc']) + 128
-    ))
-    # Converting the list of tuples into separate lists
-    posx_pix256, posy_pix256, posz_pix256 = zip(*converted_points)
 
-    # Adding the new columns to the DataFrame
-    filtered_data['posx_pix256'] = posx_pix256
-    filtered_data['posy_pix256'] = posy_pix256
-    filtered_data['posz_pix256'] = posz_pix256
 
-    return converted_points, filtered_data
-
-def segment_cube_roi(args, dens_cube, mask_cube):
-    for current_z in range(args.upper_bound - args.lower_bound):
-        dens_slice = normalize4thresholding(dens_cube[:, :, current_z + args.lower_bound]) 
-        
-        # threshold + connected component
-        binary_mask = apply_otsus_thresholding(dens_slice)
-        _, labels, _, _ = cv2.connectedComponentsWithStats(binary_mask, connectivity=8)
-
-        # retrieve all mask only
-        i = 0
-        binary_mask = labels == i
-        binary_mask = ~binary_mask
-        mask_cube[:, :, current_z] = binary_mask
-
-    return mask_cube
 
 def segment_target_roi(args, mask_target, timestamp):
     # Directory containing masks for the current timestamp
