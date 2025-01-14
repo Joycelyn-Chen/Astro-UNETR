@@ -68,7 +68,7 @@ def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, k3d_
     fig += SB_center
 
     # fig.display()
-        with open(os.path.join(k3d_root, f'{time_Myr}.html'),'w') as fp:
+    with open(os.path.join(k3d_root, f'{time_Myr}.html'),'w') as fp:
         fp.write(plot.get_snapshot())
 
     if(DEBUG):
