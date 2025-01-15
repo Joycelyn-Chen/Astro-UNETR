@@ -176,7 +176,7 @@ def update_pos_pix256(filtered_data):
 
     return converted_points, filtered_data
 
-def segment_cube_roi(args, dens_cube, mask_cube):
+def segment_cube_roi(args, dens_cube, mask_cube, temp_cube):
     for current_z in range(args.upper_bound - args.lower_bound):
         dens_slice = normalize4thresholding(dens_cube[:, :, current_z + args.lower_bound]) 
         
@@ -188,6 +188,12 @@ def segment_cube_roi(args, dens_cube, mask_cube):
         i = 0
         binary_mask = labels == i
         binary_mask = ~binary_mask
+
+        # Apply temperature filter
+        temp_slice = temp_cube[:, :, current_z + args.lower_bound]
+        temp_mask = temp_slice > np.power(10, args.temp_thresh)
+        binary_mask |= temp_mask
+
         mask_cube[:, :, current_z] = binary_mask
 
     return mask_cube

@@ -165,7 +165,8 @@ def main(args):
         # process all bubbles in the entire cube
         
         mask_cube = np.zeros((args.pixel_boundary, args.pixel_boundary, args.upper_bound - args.lower_bound))
-        mask_cube = segment_cube_roi(args, dens_cube, mask_cube)
+        # mask_cube = segment_cube_roi(args, dens_cube, mask_cube)
+        mask_cube = segment_cube_roi(args, dens_cube, temp_cube, mask_cube)
 
         # velz_cube_roi = np.where(mask_cube, velz_cube[:, :, args.lower_bound:args.upper_bound], np.nan)
         dens_cube_roi = np.where(mask_cube, dens_cube[:, :, args.lower_bound:args.upper_bound], np.nan)
@@ -201,6 +202,7 @@ if __name__ == '__main__':
     parser.add_argument('-lb', '--lower_bound', help='The lower bound for the cube.', default = 0, type = int)
     parser.add_argument('-up', '--upper_bound', help='The upper bound for the cube.', default = 256, type = int)
     parser.add_argument('-k', '--k3d_root', help='Input the root path to where the k3d plots should be stored')                # '/home/joy0921/Desktop/Dataset/img_pix256/k3d_html'
+    parser.add_argument('-Tt', '--temp_thresh', help='The power of temperature threshold for region segmentation. (hot gas)', default=5.5, type=float)
     # parser.add_argument('-', '--', help='')
  
     args = parser.parse_args()

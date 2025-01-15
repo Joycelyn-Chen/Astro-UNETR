@@ -10,6 +10,8 @@ from utils import *
 DEBUG = True
 hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
 
+# python vel3d_SN_visualization.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -st 380 -et 380 -i 10
+
 def get_velocity_data(obj, x_range, y_range, z_range):
     """
     Retrieve velx, vely, velz, density, and temperature in a single function.
@@ -25,9 +27,10 @@ def get_velocity_data(obj, x_range, y_range, z_range):
     coldens = dens * dz / (1.4 * mp)
 
     print(f"velx.shape: {velx.shape}, vely.shape: {vely.shape}, velz.shape: {velz.shape}")
-    return velx, vely, velz, dens, temp
+    return velx, vely, velz, coldens, temp
 
-def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, k3d_root, time_Myr):
+
+def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, html_root, time_Myr, vel_stride=40):
     """
     Visualize velocity field using k3d vectors.
     """
@@ -40,11 +43,28 @@ def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, k3d_
     indices = np.argwhere(~np.isnan(velx_masked))
     origins = indices.astype(np.float32)
 
+    if DEBUG:
+        print(f"Original indices: {indices.shape}")
+
+    # Randomly reduce the number of vectors to half
+    if len(indices) > 1:
+        selected_indices = np.random.choice(len(indices), size=len(indices) // vel_stride, replace=False)
+        indices = indices[selected_indices]
+        origins = origins[selected_indices]
+
     vectors = np.array([velx_masked[indices[:, 0], indices[:, 1], indices[:, 2]],
                         vely_masked[indices[:, 0], indices[:, 1], indices[:, 2]],
                         velz_masked[indices[:, 0], indices[:, 1], indices[:, 2]]]).T
 
-    scale = 0.5  # Adjust as needed
+    # Normalize vectors to the range [-1, 1]
+    max_vals = np.abs(vectors).max(axis=0)
+    vectors = vectors / max_vals
+
+    if DEBUG:
+        print(f"New vectors: {vectors.shape}")
+        print(f"Normalized vectors[0]: {vectors[0]}")
+
+    scale = 20.0  # Adjust as needed
     magnitude = np.linalg.norm(vectors, axis=1)
     colors = k3d.helpers.map_colors(magnitude, k3d.matplotlib_color_maps.RdBu, [])
     vec_colors = np.zeros(2 * len(colors))
@@ -57,25 +77,26 @@ def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, k3d_
     vec = k3d.vectors(
         origins=origins - vectors / 2,
         vectors=vectors * scale,
-        colors=vec_colors
+        colors=vec_colors,
+        use_head=True,
+        head_size=10
     )
     fig += vec
 
     # Add explosion points
     SB_center = k3d.points(positions=np.array(converted_points, dtype=np.float32),
-                           point_size=3.0,
+                           point_size=1.0,
                            shader='3d',
                            opacity=1.0,
                            color=0xc30010)
     fig += SB_center
 
     # fig.display()
-    with open(os.path.join(k3d_root, f'{time_Myr}.html'),'w') as fp:
+    with open(os.path.join(html_root, f'{time_Myr}_vel.html'),'w') as fp:
         fp.write(fig.get_snapshot())
 
     if(DEBUG):
-        print("Done. Plot file stored at {}".format(f'{k3d_root}/{time_Myr}.html'))
-
+        print("Done. Plot file stored at {}".format(f'{html_root}/{time_Myr}_vel.html'))
 
 def main(args):
     for timestamp in range(args.start_timestamp, args.end_timestamp + 1, args.incr):
@@ -99,9 +120,9 @@ def main(args):
         converted_points, filtered_data = update_pos_pix256(filtered_data)
 
         mask_cube = np.zeros((args.pixel_boundary, args.pixel_boundary, args.upper_bound - args.lower_bound), dtype=bool)
-        mask_cube = segment_cube_roi(args, dens_cube, mask_cube)
+        mask_cube = segment_cube_roi(args, dens_cube, temp_cube, mask_cube)
 
-        visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, args.k3d_root, time_Myr)
+        visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, args.html_root, time_Myr)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -110,7 +131,7 @@ if __name__ == '__main__':
         epilog='Contact Joycelyn if you dont understand')
 
     parser.add_argument('-hr', '--hdf5_root', help='Input the root path to where hdf5 files are stored.')
-    parser.add_argument('-m', '--mask_root', help='Input the root path to where mask files are stored.')
+    # parser.add_argument('-m', '--mask_root', help='Input the root path to where mask files are stored.')
     parser.add_argument('-st', '--start_timestamp', help='Input the starting timestamp', type=int)
     parser.add_argument('-et', '--end_timestamp', help='Input the ending timestamp', type=int)
     parser.add_argument('-i', '--incr', help='The timestamp increment unit', default=1, type=int)
@@ -118,7 +139,9 @@ if __name__ == '__main__':
     parser.add_argument('-pixb', '--pixel_boundary', help='Input the pixel resolution', default=256, type=int)
     parser.add_argument('-lb', '--lower_bound', help='The lower bound for the cube.', default=0, type=int)
     parser.add_argument('-up', '--upper_bound', help='The upper bound for the cube.', default=256, type=int)
-    parser.add_argument('-k', '--k3d_root', help='Input the root path to where the k3d plots should be stored')
+    parser.add_argument('-k', '--html_root', help='Input the root path to where the k3d plots should be stored')
+    parser.add_argument('-Tt', '--temp_thresh', help='The power of temperature threshold for region segmentation. (hot gas)', default=5.5, type=float)
+    
 
     args = parser.parse_args()
 
