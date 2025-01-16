@@ -33,19 +33,6 @@ def get_velocity_data(obj, x_range, y_range, z_range):
     coldens = dens * dz / (1.4 * mp)
     return velx, vely, velz, coldens, temp
 
-# Create a 2D plane based on the user-selected line and the Z-axis
-# def create_plane_mask(shape, x1, y1, x2, y2, z_range):
-#     """
-#     Create a 2D mask representing the user-selected plane in the cube.
-#     """
-#     x_vals = np.linspace(x1, x2, shape[1])  # X coordinates along the line
-#     y_vals = np.linspace(y1, y2, shape[1])  # Y coordinates along the line
-
-#     # Create a plane by combining the line with Z-axis
-#     z_vals = np.arange(z_range[0], z_range[1])
-#     plane_coords = np.array(np.meshgrid(x_vals, y_vals, z_vals, indexing="ij"))
-
-#     return plane_coords
 def create_2d_plane_mask(x1, y1, x2, y2, z_range, resolution):
     """
     Create a 2D plane based on the user-defined line (x1, y1 -> x2, y2) and z-axis.
@@ -66,7 +53,36 @@ def create_2d_plane_mask(x1, y1, x2, y2, z_range, resolution):
 
     return x_plane, y_plane, z_grid
 
+    
+def scale_down_velocity(velocity_plane, stride=40):
+    """
+    Reduce the effective number of points in the velocity_plane while keeping the output size the same.
+    Randomly select points and set the rest to zero.
+    """
+    rows, cols = velocity_plane.shape
+    num_points = velocity_plane.size // stride  # Adjust fraction as needed
+    rand_indices = np.random.choice(rows * cols, size=num_points, replace=False)
 
+    # Convert flattened indices to 2D coordinates
+    rand_row_indices, rand_col_indices = np.unravel_index(rand_indices, (rows, cols))
+
+    # Create a new velocity_plane of the same size filled with zeros
+    reduced_velocity_plane = np.zeros_like(velocity_plane)
+
+    # Assign selected points to the reduced_velocity_plane
+    reduced_velocity_plane[rand_row_indices, rand_col_indices] = velocity_plane[rand_row_indices, rand_col_indices]
+
+    # Normalize the reduced velocity plane
+    max_val = np.abs(reduced_velocity_plane).max()
+    if max_val != 0:
+        reduced_velocity_plane /= max_val
+        
+    # DEBUG
+    print(f"Max velocity: {np.max(reduced_velocity_plane)}")
+
+    return reduced_velocity_plane, rand_row_indices, rand_col_indices
+
+    
 def main():
     args = parse_args()
     
@@ -82,12 +98,7 @@ def main():
     obj = ds.arbitrary_grid(left_edge, right_edge, dims=(args.pixel_boundary,) * 3)
 
     # Retrieve data
-    velx_cube, vely_cube, velz_cube, dens_cube, temp_cube = get_velocity_data(
-        obj,
-        (args.lower_bound, args.upper_bound),
-        (args.lower_bound, args.upper_bound),
-        (args.lower_bound, args.upper_bound)
-    )
+    velx_cube, vely_cube, velz_cube, dens_cube, temp_cube = get_velocity_data(obj, (args.lower_bound, args.upper_bound), (args.lower_bound, args.upper_bound), (args.lower_bound, args.upper_bound))
 
     # Extract center slice
     channel_data = {
@@ -137,34 +148,19 @@ def main():
             else:
                 points = []  # Clear points to allow retry
 
-
-    # # Expand the line to a plane and filter the cube
-    # plane_mask = np.abs(np.outer(np.arange(img.shape[0]), slope) - np.arange(img.shape[1]) + intercept < 1)
-    # plane_mask = np.repeat(plane_mask[:, :, np.newaxis], dens_cube.shape[2], axis=2)
-
-    # # Rearrange filtered_dens and filtered_velz to match the size of plane_mask
-    # filtered_dens = np.zeros_like(plane_mask, dtype=dens_cube.dtype)
-    # filtered_velz = np.zeros_like(plane_mask, dtype=velz_cube.dtype)
-
-    # filtered_indices = np.where(plane_mask)
-    # filtered_dens[filtered_indices] = dens_cube[filtered_indices]
-    # filtered_velz[filtered_indices] = velz_cube[filtered_indices]
-
-    # # DEBUG
-    # print(f"shape: {filtered_dens.shape}")
     
     # Plot results
-    plt.figure()
+    plt.figure(figsize =(24, 16))
 
     # Subplot 1: Slice with the confirmed line
-    plt.subplot(1, 2, 1)
+    plt.subplot(1, 3, 1)
     plt.imshow(img, origin='lower', cmap='viridis')
     plt.plot([x1, x2], [y1, y2], color='red', label='Selected Line')
     plt.title(f'{args.image_channel} slice at z={args.center_z}')
     plt.legend()
 
     # Subplot 2: Filtered density and velocity
-    plt.subplot(1, 2, 2)
+    plt.subplot(1, 3, 2)
     
     z_range = (args.lower_bound, args.upper_bound)
     resolution = args.pixel_boundary
@@ -179,51 +175,56 @@ def main():
 
     # Extract 2D density and velocity planes
     density_plane = np.log10(channel_data[args.image_channel][x_plane_idx, y_plane_idx, z_plane_idx])
-    velocity_plane = velz_cube[x_plane_idx, y_plane_idx, z_plane_idx]
+    velocity_plane, Y, X = scale_down_velocity(velz_cube[x_plane_idx, y_plane_idx, z_plane_idx], stride=40)
     
     
+    # DEBUG
+    print(f"Non zero in velocity: {np.count_nonzero(velocity_plane)}")
+    print(f"velocity shape: {velocity_plane[20] * 100}")
 
-    # # Create the plane coordinates
-    # plane_coords = create_plane_mask(dens_cube.shape, x1, y1, x2, y2, z_range)
-    
-    # # DEBUG
-    # print(f"plane shape: {plane_coords.shape}")
-
-    # # Interpolate density and velocity data on the plane, and normalize them
-    # density_plane = np.log10(dens_cube[plane_coords[0].astype(int), plane_coords[1].astype(int), plane_coords[2].astype(int)])
-    # velocity_plane = velz_cube[plane_coords[0].astype(int), plane_coords[1].astype(int), plane_coords[2].astype(int)]
-    # max_vals = np.abs(velocity_plane).max(axis=0)
-    # velocity_plane = velocity_plane / max_vals
-    
-    #DEBUG
-    print(f"density shape: {density_plane.shape}")
-
-    # Plotting the results
-    # plt.figure(figsize=(10, 8))
 
     # Plot the density plane
-    plt.imshow(density_plane, origin="lower", cmap="viridis", extent=(x1, x2, y1, y2))
+    plt.imshow(density_plane, origin="lower", cmap="viridis", extent=(x1, x2, y1, y2)) #z_range[0], z_range[1])) # y1, y2))
     plt.colorbar(label="Density (g/cm³)")
     plt.title("Density Plane with Velocity Arrows")
     plt.xlabel("X (pixels)")
-    plt.ylabel("Y (pixels)")
+    plt.ylabel("Z (pixels)")
 
     # Overlay velocity arrows
     Y, X = np.meshgrid(
-        np.linspace(y1, y2, density_plane.shape[0]),
-        np.linspace(x1, x2, density_plane.shape[1]),
+        np.linspace(y1, y2, velocity_plane.shape[0]),
+        np.linspace(x1, x2, velocity_plane.shape[1]),
     )
-    # plt.quiver(
-    #     X,
-    #     Y,
-    #     np.zeros_like(velocity_plane),  # No X-component for the velocity arrows
-    #     velocity_plane,
+
+    # Filter out zero values in velocity_plane
+    non_zero_mask = velocity_plane != 0
+    X_nonzero = X[non_zero_mask]
+    Y_nonzero = Y[non_zero_mask]
+    U_nonzero = velocity_plane[non_zero_mask]  # Horizontal displacements (non-zero)
+    V_nonzero = np.zeros_like(U_nonzero)  # No vertical displacement (still non-zero)
+
+    # DEBUG
+    print(f"Before filter: {X.shape}")
+    print(f"After filter: {X_nonzero.shape}")
+    
+    # plt.quiver(X_nonzero, Y_nonzero,
+    #     V_nonzero, # np.zeros_like(velocity_plane),  # No X-component for the velocity arrows
+    #     U_nonzero, # velocity_plane * 100,
     #     angles="xy",
     #     scale_units="xy",
-    #     scale=1,
+    #     scale=10,
     #     color="red",
     #     alpha=0.7,
+    #     width=10
     # )
+    
+    plt.subplot(1, 3, 3)
+    plt.imshow(velz_cube[x_plane_idx, y_plane_idx, z_plane_idx], origin="lower", cmap="RdBu", extent=(x1, x2, y1, y2))
+    plt.colorbar(label="Velocity ($m/s^2$)")
+    plt.title("Velocity profile")
+    plt.xlabel("X (pixels)")
+    plt.ylabel("Z (pixels)")
+
 
     
     if args.save:
