@@ -79,7 +79,8 @@ def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, html
         vectors=vectors * scale,
         colors=vec_colors,
         use_head=True,
-        head_size=10
+        head_size=10,
+        line_width=0.1
     )
     fig += vec
 
