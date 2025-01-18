@@ -273,7 +273,7 @@ def main():
     # )
     
     ax3 = fig.add_subplot(2, 3, 3)
-    im3 = ax3.imshow(velz_cube[x_plane_idx, y_plane_idx, z_plane_idx][:,::-1], origin="lower", cmap="RdBu_r",
+    im3 = ax3.imshow(velz_cube[x_plane_idx, y_plane_idx, z_plane_idx], origin="lower", cmap="RdBu_r",   # [:,::-1]
                     extent=(x1, x2, z_range[0], z_range[1]),
                     vmin=-600, vmax=600)# y1, y2))
     fig.colorbar(im3, label="Velocity ($cm/s$)") #, shrink=0.5)
