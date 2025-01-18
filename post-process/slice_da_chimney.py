@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from scipy.stats import linregress
 
+# os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
+
 # python slice_da_chimney.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -cz 170 -t 420 -o /UBC-O/joy0921/Desktop/Dataset/MHD-3DIS/chimneys
 
 def parse_args():
