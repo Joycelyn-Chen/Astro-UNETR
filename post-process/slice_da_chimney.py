@@ -13,6 +13,7 @@ from scipy.stats import linregress
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument('-hr', '--hdf5_root', help='Input the root path to where hdf5 files are stored.')
+    parser.add_argument('-mr', '--mask_root', help='Input the root path to where mask files are stored.')
     parser.add_argument('-cz', '--center_z', help='The center z coordinate for the target bubble of interest.', default=0, type=int)
     parser.add_argument('-t', '--timestamp', help='Input the timestamp', type=int)
     parser.add_argument('-lb', '--lower_bound', help='The lower bound for the cube.', default=0, type=int)
@@ -42,12 +43,13 @@ def create_2d_plane_mask(x1, y1, x2, y2, z_range, resolution):
     """
     # Generate points along the user-defined line
     
-    x_vals = np.linspace(x1, x2, resolution)# np.abs(x2 - x1))
-    y_vals = np.linspace(y1, y2, resolution) #np.abs(y2 - y1))
+    x_vals = np.linspace(x1, x2, resolution, dtype=int)# np.abs(x2 - x1))
+    y_vals = np.linspace(y1, y2, resolution, dtype=int) #np.abs(y2 - y1))
 
     # Create a meshgrid for Z-axis and line points
-    z_vals = np.linspace(z_range[0], z_range[1], resolution)
+    z_vals = np.linspace(z_range[0], z_range[1], resolution, dtype=int)
     z_grid, line_grid = np.meshgrid(z_vals, np.arange(resolution), indexing='ij')
+    
 
     # Repeat X and Y for each Z coordinate
     x_plane = np.tile(x_vals, (len(z_vals), 1))
@@ -78,13 +80,21 @@ def scale_down_velocity(velocity_plane, stride=40):
     max_val = np.abs(reduced_velocity_plane).max()
     if max_val != 0:
         reduced_velocity_plane /= max_val
-        
-    # DEBUG
-    print(f"Max velocity: {np.max(reduced_velocity_plane)}")
 
     return reduced_velocity_plane, rand_row_indices, rand_col_indices
 
+def read_mask_slices(mask_root, cube_shape):
+    """
+    Reads the mask cube from `mask_root` and saves each slice along the z-axis as an image.
+    Filenames are the z-coordinates (e.g., '0.png', '1.png', ...).
+    """
+    mask_cube = np.zeros(cube_shape)
     
+    for z in range(cube_shape[2]):
+        mask_cube[z] = cv.imread(os.path.join(mask_root, f"{z}.png"), cv.IMREAD_GRAYSCALE)
+
+    return mask_cube
+
 def main():
     args = parse_args()
     
@@ -102,6 +112,12 @@ def main():
     # Retrieve data
     velx_cube, vely_cube, velz_cube, dens_cube, temp_cube = get_velocity_data(obj, (args.lower_bound, args.upper_bound), (args.lower_bound, args.upper_bound), (args.lower_bound, args.upper_bound))
 
+
+    # Read the mask center slice
+    mask_img = cv.imread(os.path.join(args.mask_root, str(args.timestamp), f"{str(args.center_z)}.png" ), cv.IMREAD_GRAYSCALE)
+    mask_cube = read_mask_slices(os.path.join(args.mask_root, str(args.timestamp)), dens_cube.shape)
+    
+    
     # Extract center slice
     channel_data = {
         'velx': velx_cube,
@@ -125,6 +141,16 @@ def main():
     img_display = img_display.astype(np.uint8)
     img_display = cv.merge([img_display, img_display, img_display])  # Duplicate to 3 channels (BGR format)
     img_copy = img_display.copy()  # Create a copy for interactive modifications
+    
+    redImg = np.zeros(img_copy.shape, img_copy.dtype)
+    redImg[:,:] = (0, 0, 255)
+    
+    # DBUG
+    print(f"mask max: {np.max(mask_cube[args.center_z])}\n\n")
+    print(f"mask cube shape: {mask_cube.shape}")
+    
+    redMask = cv.bitwise_and(redImg, redImg, mask=mask_img )#(mask_cube[args.center_z]/255))
+    cv.addWeighted(redMask, 0.7, img_copy, 1, 0, img_copy)
 
     while True:
         cv.imshow("Image", img_copy)
@@ -152,17 +178,26 @@ def main():
 
     
     # Plot results
-    plt.figure(figsize =(24, 16))
+    fig = plt.figure(figsize =(24, 16))
+    # fig, axs = plt.subplots(1, 3, figsize =(24, 16))
 
     # Subplot 1: Slice with the confirmed line
-    plt.subplot(1, 3, 1)
-    plt.imshow(img, origin='lower', cmap='viridis')
-    plt.plot([x1, x2], [y1, y2], color='red', label='Selected Line')
-    plt.title(f'{args.image_channel} slice at z={args.center_z}')
-    plt.legend()
+    ax = fig.add_subplot(2, 3, 1)
+    
+    cv.addWeighted(redMask, 0.7, img_copy, 1, 0, img_copy)
+    # im = ax.imshow(img_copy[:, :, 2], origin='lower', cmap='viridis')
+    im = ax.imshow(np.log10(channel_data[args.image_channel][:,:,args.center_z]), origin='lower', cmap='viridis')
+    print(f"img shape: {img.shape}")
+    print(f"img_copy shape: {img_copy.shape}")
+             
+    ax.plot([x1, x2], [y1, y2], color='red', label='Selected Line')
+    ax.set_title(f'{args.image_channel} slice at z={args.center_z}')
+    ax.legend()
+    fig.colorbar(im, label="Density (g/cm³)") #, shrink=0.75)
 
+    # ------------------------------------------------------------------------------------------------------------------------
     # Subplot 2: Filtered density and velocity
-    plt.subplot(1, 3, 2)
+    ax2 = fig.add_subplot(2, 3, 2)
     
     z_range = (args.lower_bound, args.upper_bound)
     resolution = args.pixel_boundary
@@ -176,22 +211,44 @@ def main():
     z_plane_idx = np.clip(z_plane.astype(int), 0, dens_cube.shape[2] - 1)
 
     # Extract 2D density and velocity planes
-    density_plane = np.log10(channel_data[args.image_channel][x_plane_idx, y_plane_idx, z_plane_idx])
+    density_plane = np.log10(channel_data[args.image_channel][x_plane_idx, y_plane_idx, z_plane_idx]) #[::-1, :])
     velocity_plane, Y, X = scale_down_velocity(velz_cube[x_plane_idx, y_plane_idx, z_plane_idx], stride=40)
-    
-    
-    # DEBUG
-    print(f"Non zero in velocity: {np.count_nonzero(velocity_plane)}")
-    print(f"velocity shape: {velocity_plane[20] * 100}")
+    mask_plane = mask_cube[x_plane_idx, y_plane_idx, z_plane_idx]
 
-
+    # --------------------------------------wuthout mask -------------------------------------------------
     # Plot the density plane
-    plt.imshow(density_plane, origin="lower", cmap="viridis", extent=(x1, x2, y1, y2)) #z_range[0], z_range[1])) # y1, y2))
-    plt.colorbar(label="Density (g/cm³)")
-    plt.title("Density Plane with Velocity Arrows")
-    plt.xlabel("X (pixels)")
-    plt.ylabel("Z (pixels)")
+    im2 = ax2.imshow(density_plane, origin="lower", cmap="viridis", extent=(x1, x2, z_range[0], z_range[1]),    # [:,::-1]
+                    vmin=np.min(img), vmax=np.max(img)) # y1, y2))
+    fig.colorbar(im2, label="Density (g/cm³)") #, shrink=0.75)
+    ax2.set_title("Sliced Density Plane")
+    ax2.set_xlabel("X (pixels)")
+    ax2.set_ylabel("Z (pixels)")
+    ax2.axhline(y=args.center_z)
+    
+    # -------------------------------------------with mask ----------------------------------------------
+    # Convert the single-channel density slice to RGB
+    # density_rgb = np.stack([density_plane, density_plane, density_plane], axis=-1)
 
+    # print(f"density shape: {np.max(density_rgb)}")
+    # # Colorize the mask (set red channel where mask is non-zero)
+    # red_overlay = np.zeros_like(density_rgb, dtype=np.float32)
+    # red_overlay[:, :, 0] = (mask_plane > 0).astype(np.float32) * np.max(density_plane)  # Red channel for mask
+
+    # # Blend the density and the red mask directly without normalizing the density slice
+    # overlay = density_rgb.copy()
+    # overlay[mask_plane > 0, 0] += np.max(density_plane) * 0.5  # Zero out blue channel in masked areas
+    # overlay[mask_plane > 0, 1] = 0  # Zero out green channel in masked areas
+    # overlay[mask_plane > 0, 2]  = 0  # Enhance red channel for masked areas
+
+    # # Plot the blended image
+
+    # im2 = ax2.imshow(overlay[:, :, 0], origin="lower")
+    # ax2.set_title("Density Slice with Mask Overlay")
+    # ax2.set_xlabel("X (pixels)")
+    # ax2.set_ylabel("Z (pixels)")
+    # fig.colorbar(im2, label="Density (g/cm³)")
+
+    # ------------------------------------------------------------------------------------------------------------------------
     # Overlay velocity arrows
     Y, X = np.meshgrid(
         np.linspace(y1, y2, velocity_plane.shape[0]),
@@ -205,9 +262,6 @@ def main():
     U_nonzero = velocity_plane[non_zero_mask]  # Horizontal displacements (non-zero)
     V_nonzero = np.zeros_like(U_nonzero)  # No vertical displacement (still non-zero)
 
-    # DEBUG
-    print(f"Before filter: {X.shape}")
-    print(f"After filter: {X_nonzero.shape}")
     
     # plt.quiver(X_nonzero, Y_nonzero,
     #     V_nonzero, # np.zeros_like(velocity_plane),  # No X-component for the velocity arrows
@@ -220,13 +274,24 @@ def main():
     #     width=10
     # )
     
-    plt.subplot(1, 3, 3)
-    plt.imshow(velz_cube[x_plane_idx, y_plane_idx, z_plane_idx], origin="lower", cmap="RdBu", extent=(x1, x2, y1, y2))
-    plt.colorbar(label="Velocity ($m/s^2$)")
-    plt.title("Velocity profile")
-    plt.xlabel("X (pixels)")
-    plt.ylabel("Z (pixels)")
-
+    ax3 = fig.add_subplot(2, 3, 3)
+    im3 = ax3.imshow(velz_cube[x_plane_idx, y_plane_idx, z_plane_idx], origin="lower", cmap="RdBu_r",   # [:,::-1]
+                    extent=(x1, x2, z_range[0], z_range[1]),
+                    vmin=-600, vmax=600)# y1, y2))
+    fig.colorbar(im3, label="Velocity ($cm/s$)") #, shrink=0.5)
+    ax3.set_title("Velocity profile")
+    ax3.set_xlabel("X (pixels)")
+    ax3.set_ylabel("Z (pixels)")
+    ax3.axhline(y=args.center_z)
+    
+    
+    ax5 = fig.add_subplot(2,3,5)
+    # ax5.plot(dens_cube[x_plane_idx, y_plane_idx[0], args.center_z])
+    
+    ax5.plot(img[:, y_plane_idx[0][0]])
+    ax5.set_yscale('log')
+    ax5.set_xlabel('X (pixels)')
+    ax5.set_ylabel('Density ($g/cm^3$)')
 
     
     if args.save:
