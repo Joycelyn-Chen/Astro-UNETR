@@ -27,6 +27,7 @@ cd checkpoints/
 - [ ] Add teaser figure
 
 ---------------------------------------------------------------------------
+
 # Elephant command
 ```
 python analysis/SB230/wholeCube_SN_target_k3d.py -h "/srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc" -m /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/SB450_1 -st 450 -et 510 -k /home/joy0921/Desktop/Dataset/MHD-3DIS/k3d_html -i 10
@@ -43,4 +44,12 @@ python rescale_mask_10002256.py --input_root /UBC-O/joy0921/Desktop/Dataset/VOS_
 python add_black_masks.py --mask_root /UBC-O/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/SN_20915
 
 python img-flip-xy.py --input_root /UBC-O/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/SN_20617
+```
+# `compute2.idsl` command
+```
+python remove-unwanted-masks.py --data_dir /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230/410 --start_z 0 --end_z 223
+
+python instance-seg-point-prompt.py --sam2_root /home/joy0921/Desktop/sam2 --data_dir /home/joy0921/Desktop/Dataset/MHD-3DIS --timestamp 520
+
+python slice_da_chimney.py -hr /home/joy0921/Desktop/Dataset/MHD-3DIS/hdf5 -cz 170 -t 420 -o /UBC-O/joy0921/Desktop/Dataset/MHD-3DIS/chimneys
 ```
