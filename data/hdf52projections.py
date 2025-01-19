@@ -24,4 +24,4 @@ if __name__ == "__main__":
 
         prj.save(os.path.join(args.output_root, f'{time_Myr}.png'))
 
-# python hdf52projections.py --hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -st 209 -et 231 -i 1 -o /home/joy0921/Desktop/Dataset/MHD-3DIS/projections
+# python hdf52projections.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -st 209 -et 231 -i 1 -o /home/joy0921/Desktop/Dataset/MHD-3DIS/projections
