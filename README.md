@@ -25,3 +25,22 @@ cd checkpoints/
 
 - Documentation
 - [ ] Add teaser figure
+
+---------------------------------------------------------------------------
+# Elephant command
+```
+python analysis/SB230/wholeCube_SN_target_k3d.py -h "/srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc" -m /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/SB450_1 -st 450 -et 510 -k /home/joy0921/Desktop/Dataset/MHD-3DIS/k3d_html -i 10
+
+
+python vel3d_SN_visualization.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc  -st 380 -et 380 -i 10 -k /home/joy0921/Desktop/Dataset/MHD-3DIS/htmls
+    
+    
+python post-process/wholeCube_SN_target_k3d.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -m ~/Desktop/Dataset/MHD-3DIS/SB_tracks/SN_20915 -k /UBC-O/joy0921/Desktop/Dataset/MHD-3DIS/htmls/SN_20915 -st 209 -et 231 -i 1    
+
+
+python rescale_mask_10002256.py --input_root /UBC-O/joy0921/Desktop/Dataset/VOS_output/astro_0219 --output_root /UBC-O/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/SN_20915
+
+python add_black_masks.py --mask_root /UBC-O/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/SN_20915
+
+python img-flip-xy.py --input_root /UBC-O/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/SN_20617
+```
