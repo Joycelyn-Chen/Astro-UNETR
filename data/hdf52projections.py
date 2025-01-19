@@ -2,7 +2,7 @@ import yt
 import os
 import argparse
 
-parser = argparse.ArgumentParser(description="Flip the images horizontally.")
+parser = argparse.ArgumentParser(description="Generating projection plots for designated timestamp range.")
 parser.add_argument("--hdf5_root", default="./Dataset", type=str, help="input hdf5 directory")
 parser.add_argument("--output_root", default="./Dataset", type=str, help="output directory")
 parser.add_argument('-i', '--incr', help='The timestamp increment unit', default=1, type=int)
