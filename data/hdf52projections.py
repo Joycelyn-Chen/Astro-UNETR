@@ -3,8 +3,8 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser(description="Generating projection plots for designated timestamp range.")
-parser.add_argument("--hdf5_root", default="./Dataset", type=str, help="input hdf5 directory")
-parser.add_argument("--output_root", default="./Dataset", type=str, help="output directory")
+parser.add_argument("-hr", "--hdf5_root", default="./Dataset", type=str, help="input hdf5 directory")
+parser.add_argument("-o", "--output_root", default="./Dataset", type=str, help="output directory")
 parser.add_argument('-i', '--incr', help='The timestamp increment unit', default=1, type=int)
 parser.add_argument('-st', '--start_timestamp', help='Input the starting timestamp', type=int)
 parser.add_argument('-et', '--end_timestamp', help='Input the ending timestamp', type=int)
@@ -24,4 +24,4 @@ if __name__ == "__main__":
 
         prj.save(os.path.join(args.output_root, f'{time_Myr}.png'))
 
-# python hdf52projections.py --hdf5_root /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -st 209 -et 231 -i 1 -output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/projections
+# python hdf52projections.py --hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -st 209 -et 231 -i 1 -o /home/joy0921/Desktop/Dataset/MHD-3DIS/projections
