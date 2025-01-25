@@ -4,7 +4,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
-from scipy.stats import linregress
+# from scipy.stats import linregress
 
 # os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
@@ -48,14 +48,14 @@ def create_2d_plane_mask(x1, y1, x2, y2, z_range, resolution):
 
     # Create a meshgrid for Z-axis and line points
     z_vals = np.linspace(z_range[0], z_range[1], resolution, dtype=int)
-    z_grid, line_grid = np.meshgrid(z_vals, np.arange(resolution), indexing='ij')
+    z_plane, line_grid = np.meshgrid(z_vals, np.arange(resolution), indexing='ij')
     
 
     # Repeat X and Y for each Z coordinate
     x_plane = np.tile(x_vals, (len(z_vals), 1))
     y_plane = np.tile(y_vals, (len(z_vals), 1))
 
-    return x_plane, y_plane, z_grid
+    return x_plane, y_plane, z_plane
 
     
 def scale_down_velocity(velocity_plane, stride=40):
@@ -161,7 +161,7 @@ def main():
             cv.destroyAllWindows()
             x1, y1 = points[0]
             x2, y2 = points[1]
-            slope, intercept = linregress([x1, x2], [y1, y2])[:2]
+            # slope, intercept = linregress([x1, x2], [y1, y2])[:2]
 
             # Draw the confirmed line
             img_copy = img_display.copy()  # Reset the display to the original image
@@ -178,7 +178,7 @@ def main():
 
     
     # Plot results
-    fig = plt.figure(figsize =(24, 16))
+    fig = plt.figure(figsize =(18, 12))
     # fig, axs = plt.subplots(1, 3, figsize =(24, 16))
 
     # Subplot 1: Slice with the confirmed line
