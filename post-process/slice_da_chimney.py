@@ -105,7 +105,7 @@ def main():
         'dens': dens_cube,
         'temp': temp_cube
     }
-    img = np.log10(channel_data[args.image_channel][:, :, args.center_z])
+    img = np.log10(channel_data[args.image_channel][:, :, args.center_z]).T[::]
     
     # Show the image and select points
     points = []
@@ -123,13 +123,12 @@ def main():
     
     redImg = np.zeros(img_copy.shape, img_copy.dtype)
     redImg[:,:] = (0, 0, 255)
+        
+    redMask = cv.bitwise_and(redImg, redImg, mask=mask_img) #(mask_cube[args.center_z]/255))
+    redMask = cv.transpose(redMask)
     
-    # DBUG
-    print(f"mask max: {np.max(mask_cube[args.center_z])}\n\n")
-    print(f"mask cube shape: {mask_cube.shape}")
-    
-    redMask = cv.bitwise_and(redImg, redImg, mask=mask_img )#(mask_cube[args.center_z]/255))
     cv.addWeighted(redMask, 0.7, img_copy, 1, 0, img_copy)
+    
 
     while True:
         cv.imshow("Image", img_copy)
@@ -165,7 +164,7 @@ def main():
     
     cv.addWeighted(redMask, 0.7, img_copy, 1, 0, img_copy)
     # im = ax.imshow(img_copy[:, :, 2], origin='lower', cmap='viridis')
-    im = ax.imshow(np.log10(channel_data[args.image_channel][:,:,args.center_z]), origin='lower', cmap='viridis')
+    im = ax.imshow(np.log10(channel_data[args.image_channel][:,:,args.center_z]).T[::], origin='lower', cmap='viridis', vmin=14.5, vmax=21.5)
     
              
     ax.plot([x1, x2], [y1, y2], color='red', label='Selected Line')
@@ -190,8 +189,7 @@ def main():
 
     for z in range(args.lower_bound, args.upper_bound):
         for x in range(x1, x2):
-            # y = int(slope * x + intercept)  # nearest neighbor
-            y = 128
+            y = int(slope * x + intercept)  # nearest neighbor
             img_d[x - x1, z] = np.log10(dens_cube[x, y, z])
             img_v[x - x1, z] = velz_cube[x, y, z]
 
@@ -199,7 +197,7 @@ def main():
     # --------------------------------------without mask -------------------------------------------------
     # Plot the density plane
     im2 = ax2.imshow(img_d.T[::], origin="lower", cmap="viridis", extent=(x1, x2, z_range[0], z_range[1]),    # [:,::-1]
-                    vmin=np.min(img_d), vmax=np.max(img_d)) # y1, y2))
+                    vmin=14.5, vmax=21.5) #vmin=np.min(img_d), vmax=np.max(img_d)) # y1, y2))
     fig.colorbar(im2, label="Density (g/cm³)") #, shrink=0.75)
     ax2.set_title("Sliced Density Plane")
     ax2.set_xlabel("X (pixels)")
