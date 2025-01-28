@@ -28,7 +28,7 @@ cd checkpoints/
 
 ---------------------------------------------------------------------------
 
-# Elephant command
+# `Elephant` command
 ```
 python analysis/SB230/wholeCube_SN_target_k3d.py -h "/srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc" -m /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/SB450_1 -st 450 -et 510 -k /home/joy0921/Desktop/Dataset/MHD-3DIS/k3d_html -i 10
 
