@@ -126,7 +126,7 @@ def main():
         
     redMask = cv.bitwise_and(redImg, redImg, mask=mask_img) #(mask_cube[args.center_z]/255))
     redMask = cv.transpose(redMask)
-    
+
     cv.addWeighted(redMask, 0.7, img_copy, 1, 0, img_copy)
     
 
@@ -210,7 +210,7 @@ def main():
     im3 = ax3.imshow(img_v.T[::], origin="lower", cmap="RdBu_r",   # [:,::-1]
                     extent=(x1, x2, z_range[0], z_range[1]),
                     vmin=-600, vmax=600)# y1, y2))
-    fig.colorbar(im3, label="Velocity ($cm/s$)") #, shrink=0.5)
+    fig.colorbar(im3, label="Velocity ($km/s$)") #, shrink=0.5)
     ax3.set_title("Velocity profile")
     ax3.set_xlabel("X (pixels)")
     ax3.set_ylabel("Z (pixels)")
