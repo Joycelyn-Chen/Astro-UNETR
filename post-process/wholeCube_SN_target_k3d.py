@@ -61,6 +61,7 @@ def saving_k3d_plots(args, time_Myr, dens_cube_roi, dens_target_roi, converted_p
                             opacity=0.2,
                             color_map=matplotlib_color_maps.Viridis,
                             attribute=values_whole_cube,
+                            name='Hot Gases'
                             ) # color=0x3f6bc5
 
     target_points = k3d.points(positions=coords_target,
@@ -69,13 +70,16 @@ def saving_k3d_plots(args, time_Myr, dens_cube_roi, dens_target_roi, converted_p
                             opacity=1.0,
                             color_map=matplotlib_color_maps.Viridis,
                             attribute=values_target,
+                            name='SB230'
                             ) # color=0x3f6bc5
 
     SB_center = k3d.points(positions = converted_points, 
                             point_size=3.0,
                             shader='3d',
                             opacity=1.0,
-                            color=0xc30010)     # original point: [149, 178, 141]
+                            color=0xc30010,
+                            name='SN injections'
+                            )     # original point: [149, 178, 141]
 
     plot = k3d.plot(grid=(0, 0, 0, 10, 10, 10),
                     axes=['X', 'Y', 'Z'])
