@@ -4,11 +4,14 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
+from utils import timestamp2Myr
 # from scipy.stats import linregress
 
 # os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH")
 
 # python slice_da_chimney.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -cz 170 -t 420 -o /UBC-O/joy0921/Desktop/Dataset/MHD-3DIS/chimneys
+
+specified_points = [(1, 100), (254, 234)]
 
 def parse_args():
     parser = ArgumentParser()
@@ -137,6 +140,8 @@ def main():
 
         if len(points) == 2:
             cv.destroyAllWindows()
+            if(len(specified_points) != 0):
+                points = specified_points
             x1, y1 = points[0]
             x2, y2 = points[1]
             # slope, intercept = linregress([x1, x2], [y1, y2])[:2]
@@ -167,10 +172,10 @@ def main():
     im = ax.imshow(np.log10(channel_data[args.image_channel][:,:,args.center_z]).T[::], origin='lower', cmap='viridis', vmin=14.5, vmax=21.5)
     
              
-    ax.plot([x1, x2], [y1, y2], color='red', label='Selected Line')
-    ax.set_title(f'{args.image_channel} slice at z={args.center_z}')
+    ax.plot([x1, x2], [y1, y2], color='red', label='Vertical Cut')
+    ax.set_title(f'Z = {args.center_z} px')
     ax.legend()
-    fig.colorbar(im, label="Density (g/cm³)") #, shrink=0.75)
+    fig.colorbar(im, label="Density ($g/cm^3$)") #, shrink=0.75)
     ax.set_xlabel("X (pixels)")
     ax.set_ylabel("Y (pixels)")
     
@@ -198,11 +203,11 @@ def main():
     # Plot the density plane
     im2 = ax2.imshow(img_d.T[::], origin="lower", cmap="viridis", extent=(x1, x2, z_range[0], z_range[1]),    # [:,::-1]
                     vmin=14.5, vmax=21.5) #vmin=np.min(img_d), vmax=np.max(img_d)) # y1, y2))
-    fig.colorbar(im2, label="Density (g/cm³)") #, shrink=0.75)
-    ax2.set_title("Sliced Density Plane")
+    fig.colorbar(im2, label="Density ($g/cm^3$)") #, shrink=0.75)
+    ax2.set_title("Vertical $dens$")
     ax2.set_xlabel("X (pixels)")
     ax2.set_ylabel("Z (pixels)")
-    ax2.axhline(y=args.center_z)
+    ax2.axhline(y=args.center_z, linewidth=2, color='black')
 
     # ------------------------------------------------------------------------------------------------------------------------
     
@@ -211,23 +216,24 @@ def main():
                     extent=(x1, x2, z_range[0], z_range[1]),
                     vmin=-600, vmax=600)# y1, y2))
     fig.colorbar(im3, label="Velocity ($km/s$)") #, shrink=0.5)
-    ax3.set_title("Velocity profile")
+    ax3.set_title("Vertical $vel_z$")
     ax3.set_xlabel("X (pixels)")
     ax3.set_ylabel("Z (pixels)")
-    ax3.axhline(y=args.center_z)
+    ax3.axhline(y=args.center_z, linewidth=2, color='black', label=args.center_z)
     
     
-    ax5 = fig.add_subplot(2,3,5)
-    # ax5.plot(dens_cube[x_plane_idx, y_plane_idx[0], args.center_z])
+    # ax5 = fig.add_subplot(2,3,5)
+    # # ax5.plot(dens_cube[x_plane_idx, y_plane_idx[0], args.center_z])
     
-    ax5.plot(img_d[:, args.center_z])
-    ax5.set_yscale('log')
-    ax5.set_xlabel('X (pixels)')
-    ax5.set_ylabel('Density ($g/cm^3$)')
+    # ax5.plot(img_d[:, args.center_z])
+    # ax5.set_yscale('log')
+    # ax5.set_xlabel('X (pixels)')
+    # ax5.set_ylabel('Density ($g/cm^3$)')
 
     
     if args.save:
-        save_file = os.path.join(args.output_root, f"{args.image_channel}_chimney_z{args.center_z}.jpg")
+        # save_file = os.path.join(args.output_root, f"{args.image_channel}_chimney_z{args.center_z}.jpg")
+        save_file = os.path.join(args.output_root, f"{timestamp2Myr(args.timestamp)}.png")
         plt.savefig(save_file)
         print(f"Done! Plot saved at: {save_file}")
     else:
