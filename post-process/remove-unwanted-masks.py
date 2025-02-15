@@ -47,7 +47,6 @@ def process_images(data_dir, start_z, end_z):
             black_image = np.zeros((256, 256), dtype=np.uint8)
             black_image = Image.fromarray(black_image)
 
-            # Save the black image with the same name
             black_image.save(os.path.join(data_dir, image_file))
 
             print(f"Replaced {image_file} with a black image.")
