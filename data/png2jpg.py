@@ -1,43 +1,37 @@
 import os
-import shutil
 import argparse
 from PIL import Image
-import numpy as np
 
-parser = argparse.ArgumentParser(description="Converting png masks into jpg masks for SAM2 input.")
-parser.add_argument("--png_dir", default="./Dataset", type=str, help="input data directory")
-parser.add_argument("--jpg_dir", default="./Dataset", type=str, help="outputput data directory")
+# python png2jpg.py --png_dir /home/joy0921/Desktop/Dataset/MHD-3DIS/masks/ --jpg_dir /home/joy0921/Desktop/Dataset/MHD-3DIS/masks-jpg/
 
-def rename_png_to_jpg(source_root, destination_root):
+parser = argparse.ArgumentParser(description="Converting PNG masks into JPG masks for SAM2 input.")
+parser.add_argument("--png_dir", type=str, required=True, help="Input directory containing PNG images")
+parser.add_argument("--jpg_dir", type=str, required=True, help="Output directory for JPG images")
+
+def convert_png_to_jpg(source_root, destination_root):
     if not os.path.exists(destination_root):
         os.makedirs(destination_root)
 
-    for root, dirs, files in os.walk(source_root):
-        # Calculate the destination directory path
+    for root, _, files in os.walk(source_root):
         rel_path = os.path.relpath(root, source_root)
         dest_dir = os.path.join(destination_root, rel_path)
-        if not os.path.exists(dest_dir):
-            os.makedirs(dest_dir)
+        os.makedirs(dest_dir, exist_ok=True)
 
         for file in files:
-            if file.endswith('.png'):
-                # Source file path
+            if file.lower().endswith('.png'):
                 source_file = os.path.join(root, file)
-                # Destination file path with changed extension
                 destination_file = os.path.join(dest_dir, file[:-4] + '.jpg')
 
-                # Open the image and convert to an array
                 with Image.open(source_file) as img:
-                    # Multiply image data by 255
-                    img_array = np.array(img) * 255
-                    # Ensure no overflow by capping values
-                    img_array = np.clip(img_array, 0, 255).astype('uint8')
-                    # Convert array back to an image
-                    enhanced_img = Image.fromarray(img_array)
-                    # Save as JPEG
-                    enhanced_img.save(destination_file, "JPEG", quality=95)
+                    # Convert image to RGB mode if it has transparency
+                    if img.mode in ("RGBA", "P"):
+                        img = img.convert("RGB")
+
+                    img.save(destination_file, "JPEG", quality=95)
+
+        print(f"Conversion completed. JPG files saved in: {dest_dir}")
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    convert_png_to_jpg(args.png_dir, args.jpg_dir)
 
-    rename_png_to_jpg(args.png_dir, args.jpg_dir)
