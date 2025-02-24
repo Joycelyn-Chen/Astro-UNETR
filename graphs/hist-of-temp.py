@@ -1,67 +1,154 @@
-from PIL import Image
-import numpy as np
-import cv2 as cv
 import os
 import argparse
-from matplotlib import pyplot as plt
+import numpy as np
+import matplotlib.pyplot as plt
 import yt
+import cv2 as cv  
+import scipy.ndimage as ndimage  # for 3D morphological operations
 
-hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
-
-# python hist-of-temp.py --hdf5_root /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc --mask_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --timestamp 380
-
-parser = argparse.ArgumentParser(description="Plotting the histogram of temperature values around the bubble")
-parser.add_argument("--hdf5_root", default="./Dataset", type=str, help="input image directory")
-parser.add_argument("--mask_root", default="./Dataset", type=str, help="input mask directory")
-parser.add_argument("--output_root", default="./Dataset", type=str, help="output directory")
-parser.add_argument("--timestamp", default='209', type=str, help='timestamp of the HDF5 file')
-parser.add_argument('-lb', '--lower_bound', help='The lower bound for the cube.', default = 0, type = int)
-parser.add_argument('-up', '--upper_bound', help='The upper bound for the cube.', default = 256, type = int)
-parser.add_argument('-pixb', '--pixel_boundary', help='Input the pixel resolution', default = 256, type = int)
-
-def get_temp(obj, x_range, y_range, z_range):    
-    temp = obj["flash", "temp"][x_range[0] : x_range[1], y_range[0] : y_range[1], z_range[0] : z_range[1]].to('K').value      
-
-    return temp
-
-if __name__ == "__main__":
-    args = parser.parse_args()
-    # 1. read the input 3D cube of binary masks, store in a 3D array
-    mask = np.zeros((256, 256, 256), dtype=np.int8)
-    for mask_file in sorted(os.listdir(args.mask_root, args.timestamp)):
-        if mask_file.endswith('.png'):
-            mask_path = os.path.join(args.mask_root, args.timestamp, mask_file)
-            mask_slice = cv.imread(mask_path, cv.IMREAD_GRAYSCALE)
-            mask[:, :, int(mask_file.split('.')[0])] = mask_slice
+def load_mask_cube(mask_root, timestamp, cube_dim=256):
+    """
+    Step 1: Read the input 3D cube of binary masks.
+    Assumes files are stored in: mask_root/timestamp and named as <slice_index>.png.
+    """
+    mask_dir = os.path.join(mask_root, timestamp)
+    mask_cube = np.zeros((cube_dim, cube_dim, cube_dim), dtype=np.uint8)
     
+    for file_name in sorted(os.listdir(mask_dir)):
+        if file_name.endswith('.png'):
+            slice_index = int(os.path.splitext(file_name)[0])
+            if slice_index < cube_dim:
+                file_path = os.path.join(mask_dir, file_name)
+                mask_slice = cv.imread(file_path, cv.IMREAD_GRAYSCALE)
+                if mask_slice is None:
+                    raise ValueError(f"Failed to read {file_path}")
+                mask_cube[:, :, slice_index] = mask_slice
+    return mask_cube
 
-    # 2. read HDF5 raw data, read temperature value for center 256 cube
-    ds = yt.load(os.path.join(args.hdf5_root, '{}{}'.format(hdf5_prefix, args.timestamp)))
-
-    center = [0, 0, 0] * yt.units.pc
-    arb_center = ds.arr(center, 'code_length')
-    xlim, ylim, zlim = args.pixel_boundary, args.pixel_boundary, args.pixel_boundary
+def load_temperature_cube(hdf5_root, timestamp, hdf5_prefix, pixel_boundary, lower_bound, upper_bound):
+    """
+    Step 2: Read HDF5 raw data and extract temperature values for the center cube.
+    """
+    hdf5_file = os.path.join(hdf5_root, f'{hdf5_prefix}{timestamp}')
+    ds = yt.load(hdf5_file)
+    
+    # Define center (here simply the origin in code units)
+    arb_center = ds.arr([0, 0, 0], 'code_length')
     left_edge = arb_center + ds.quan(-500, 'pc')
     right_edge = arb_center + ds.quan(500, 'pc')
-    obj = ds.arbitrary_grid(left_edge, right_edge, dims=(xlim,ylim,zlim))
+    
+    # Create an arbitrary grid of desired resolution
+    grid = ds.arbitrary_grid(left_edge, right_edge, dims=(pixel_boundary, pixel_boundary, pixel_boundary))
+    
+    # Extract the temperature cube from the arbitrary grid and convert to Kelvin
+    temp_cube = grid[("flash", "temp")][
+        lower_bound:upper_bound,
+        lower_bound:upper_bound,
+        lower_bound:upper_bound
+    ].to('K').value
+    return temp_cube
 
-    temp_cube = get_temp(obj, (args.lower_bound, args.upper_bound), (args.lower_bound, args.upper_bound), (args.lower_bound, args.upper_bound))
+def spherical_kernel(size):
+    """
+    Creates a 3D spherical structuring element with the given size.
+    The sphere's radius is (size - 1)/2.
+    """
+    center = (np.array([size, size, size]) - 1) / 2.0
+    x, y, z = np.indices((size, size, size))
+    kernel = ((x - center[0])**2 + (y - center[1])**2 + (z - center[2])**2) <= (center[0]**2)
+    return kernel.astype(np.uint8)
 
-    # 3. both dilate and erode the 3D mask by 10 pixels
-    kernel = np.ones((10, 10, 10), np.uint8)
-    dilated = cv.dilate(mask, kernel, iterations=1)
-    eroded = cv.erode(mask, kernel, iterations=1)
+def morphological_difference(mask, kernel_size=5):
+    """
+    Steps 3 & 4: Dilate and erode the 3D mask and subtract the eroded mask from the dilated mask.
+    """
+    # Create a cubic structuring element
+    # structure = np.ones((kernel_size, kernel_size, kernel_size), dtype=np.uint8)
+    structure = spherical_kernel(kernel_size)
+    
+    # Perform 3D dilation and erosion
+    eroded = ndimage.binary_erosion(mask, structure=structure)
+    mask_original = ndimage.binary_dilation(eroded, structure=structure)
 
+    dilated = ndimage.binary_dilation(mask_original, structure=structure)
+    # eroded = ndimage.binary_erosion(mask, structure=structure)
+    
+    # Compute the difference (convert boolean arrays to uint8 for subtraction)
+    mask_diff = dilated.astype(np.uint8) - eroded.astype(np.uint8)
 
-    # 4. then minus the dilated 3D masks by the eroded 3D mask.
-    mask = dilated - eroded 
+    slice_index = mask_diff.shape[2] // 2
+    # Multiply by 255 to scale the binary mask to full grayscale range
+    mask_slice = (eroded[:, :, slice_index] * 255).astype(np.uint8)
+    # mask_slice = (mask[:, :, slice_index]).astype(np.uint8)
+    save_path = os.path.join('/home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230', 'mask.png')
+    cv.imwrite(save_path, mask_slice)
 
-    # 5. accumulate the remaining data points into an 1D array
-    temp_1D = temp_cube[mask==1]
+    return mask_diff
 
-    # 6. graph the 1D array as a histogram of temperature.
-    plt.hist(temp_1D, bins=100, alpha=0.7, color='b')
-    plt.savefig(os.path.join(args.output_root, 'hist-of-temp.png'))
+def plot_temperature_histogram(temp_cube, mask_diff, output_path):
+    """
+    Steps 5, 6 & 7: Extract temperature values where the mask difference equals 1,
+    then plot the histogram with a vertical line indicating a sharp cutoff.
+    """
+    # Accumulate the temperature values into a 1D array
+    temp_values = temp_cube[mask_diff == 1]
+    
+    plt.figure()
+    plt.hist(temp_values, bins=50, color='b') #facecolor='#2ab0ff', edgecolor='#e0e0e0', linewidth=2.5, alpha=1)
 
-    # 7. look for a sharp cut off
-    plt.axvline(x=1e4, color='r', linestyle='--')
+    # n, bins, patches = plt.hist(temp_values, bins=500, facecolor='#2ab0ff', edgecolor='#e0e0e0', linewidth=0.5, alpha=0.7)
+
+    # n = n.astype('int') # it MUST be integer
+    # # Good old loop. Choose colormap of your taste
+    # for i in range(len(patches)):
+    #     patches[i].set_facecolor(plt.cm.viridis(n[i]/max(n)))
+    
+    # Make one bin stand out   
+    # patches[47].set_fc('red') # Set color
+    # patches[47].set_alpha(1) # Set opacity
+    
+
+    # Mark a sharp cutoff at 1e4 K
+    plt.axvline(x=10e2, color='r', linestyle='--', label='Cut off at 1e2 K')
+
+    plt.xlabel("Temperature (K)", fontsize=10)
+    plt.ylabel("Frequency", fontsize=10)
+    plt.title("Histogram of Temperature Values", fontsize=12)
+    plt.legend()
+    plt.savefig(output_path)
+    plt.close()
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Plot the histogram of temperature values around the bubble"
+    )
+    parser.add_argument("--hdf5_root", default="./Dataset", type=str, help="Input HDF5 directory")
+    parser.add_argument("--mask_root", default="./Dataset", type=str, help="Input mask directory")
+    parser.add_argument("--output_root", default="./Dataset", type=str, help="Output directory")
+    parser.add_argument("--timestamp", default='209', type=str, help="Timestamp of the HDF5 file")
+    parser.add_argument('-lb', '--lower_bound', default=0, type=int, help="Lower bound for the cube")
+    parser.add_argument('-up', '--upper_bound', default=256, type=int, help="Upper bound for the cube")
+    parser.add_argument('-pixb', '--pixel_boundary', default=256, type=int, help="Pixel resolution for the grid")
+    args = parser.parse_args()
+
+    # Step 1: Load the 3D cube of binary masks
+    mask_cube = load_mask_cube(args.mask_root, args.timestamp, cube_dim=256)
+    
+    # Step 2: Read HDF5 raw data and extract the temperature cube
+    hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
+    temp_cube = load_temperature_cube(
+        args.hdf5_root, args.timestamp, hdf5_prefix,
+        args.pixel_boundary, args.lower_bound, args.upper_bound
+    )
+    
+    # Steps 3 & 4: Apply morphological operations and compute the difference mask
+    mask_diff = morphological_difference(mask_cube, kernel_size=10)
+    
+    # Steps 5, 6 & 7: Accumulate temperature data, plot the histogram, and mark the cutoff
+    output_file = os.path.join(args.output_root, 'hist-of-temp.png')
+    plot_temperature_histogram(temp_cube, mask_diff, output_file)
+
+    print(f"Done. Plot saved at: {output_file}")
+
+if __name__ == "__main__":
+    main()
