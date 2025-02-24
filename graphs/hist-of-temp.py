@@ -61,6 +61,7 @@ if __name__ == "__main__":
 
     # 6. graph the 1D array as a histogram of temperature.
     plt.hist(temp_1D, bins=100, alpha=0.7, color='b')
+    plt.savefig(os.path.join(args.output_root, 'hist-of-temp.png'))
 
     # 7. look for a sharp cut off
     plt.axvline(x=1e4, color='r', linestyle='--')
