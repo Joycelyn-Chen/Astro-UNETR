@@ -8,7 +8,7 @@ import yt
 
 hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
 
-# python hist-of-temp.py --hdf5_root --mask_root --timestamp 209
+# python hist-of-temp.py --hdf5_root /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc --mask_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --timestamp 380
 
 parser = argparse.ArgumentParser(description="Plotting the histogram of temperature values around the bubble")
 parser.add_argument("--hdf5_root", default="./Dataset", type=str, help="input image directory")
