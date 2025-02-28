@@ -5,6 +5,7 @@ import yt
 import cv2 as cv  
 import scipy.ndimage as ndimage  # for 3D morphological operations
 from matplotlib import colors
+import argparse
 
 DEBUG = True
 hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
@@ -69,7 +70,7 @@ def timestamp2Myr(timestamp):
     return (timestamp - 200) * 0.1 + 191
 
 
-def morphological_difference(mask, kernel_size=5):
+def morphological_difference(mask_cube, kernel_size=5):
     """
     Steps 3 & 4: Dilate and erode the 3D mask and subtract the eroded mask from the dilated mask.
     """
@@ -88,7 +89,7 @@ def morphological_difference(mask, kernel_size=5):
     # Compute the difference (convert boolean arrays to uint8 for subtraction)
     mask_diff = np.logical_xor(dilated, mask_original)
 
-    return mask_diff
+    return mask_diff, eroded
 
 def calc_ratio(temp_values):
     # Compute normalized weights so that the total volume sums to 1.
@@ -106,7 +107,7 @@ def calc_ratio(temp_values):
     return fraction
 
     
-def plot_temperature_histogram(temp_cube, mask_diff, output_path):
+def plot_temperature_histogram(temp_cube, mask_diff, eroded, timestamp, output_path):
     """
     Steps 5, 6 & 7: Extract temperature values where the mask difference equals 1,
     then plot the histogram with a vertical line indicating a sharp cutoff.
@@ -147,7 +148,7 @@ def plot_temperature_histogram(temp_cube, mask_diff, output_path):
     # Set axis labels and title (including the fraction result).
     ax.set_xlabel("Temperature ($\\log_{10}(K)$)", fontsize=12)
     ax.set_ylabel("fraction / dex", fontsize=12)
-    ax.set_title(f"t = {timestamp2Myr(int(timestamp))} Myr, Ratio = {fraction:.3f}", fontsize=14)
+    ax.set_title(f"t = {timestamp2Myr(timestamp)} Myr, Ratio = {ratio:.3f}", fontsize=14)
 
     # Set axis limits and scaling.
     ax.set_xlim(x_min, x_max)
@@ -227,35 +228,41 @@ def plot_ratio(temp_dict, ratio_dict, output_file):
     
     # Create the figure and axis
     plt.figure(figsize=(12, 8))
-    bar_width = 0.8  # width of each bar
+    bar_width = 0.4  # width of each bar
     
     # Plot the stacked bars.
     # The first layer (cold) starts at 0.
-    plt.bar(timeMyrs, cold_fracs, width=bar_width, color='blue', label='Cold (T < 39.8)')
+    plt.bar(timeMyrs, cold_fracs, width=bar_width, color='#BDB5AF', label='Cold')
     # Next layer (cool) starts at the top of cold layer.
-    plt.bar(timeMyrs, cool_fracs, width=bar_width, bottom=cold_fracs, color='cyan', label='Cool (39.8 < T < 1e4)')
+    plt.bar(timeMyrs, cool_fracs, width=bar_width, bottom=cold_fracs, color='#92AAC3', label='Cool')
     
     # Compute cumulative bottoms for stacking subsequent layers
     cum_bottom = np.array(cold_fracs) + np.array(cool_fracs)
-    plt.bar(timeMyrs, warm_fracs, width=bar_width, bottom=cum_bottom, color='green', label='Warm (1e4 < T < 2e4)')
+    plt.bar(timeMyrs, warm_fracs, width=bar_width, bottom=cum_bottom, color='#B8A750', label='Warm')
     
     cum_bottom += np.array(warm_fracs)
-    plt.bar(timeMyrs, trans_fracs, width=bar_width, bottom=cum_bottom, color='orange', label='Transition (2e4 < T < 1e5.5)')
+    plt.bar(timeMyrs, trans_fracs, width=bar_width, bottom=cum_bottom, color='#E3AA52', label='Transition')
     
     cum_bottom += np.array(trans_fracs)
-    plt.bar(timeMyrs, hot_fracs, width=bar_width, bottom=cum_bottom, color='red', label='Hot (T > 1e5.5)')
+    plt.bar(timeMyrs, hot_fracs, width=bar_width, bottom=cum_bottom, color='#E2690D', label='Hot')
     
     # Overlay the ratio line plot.
     # Get ratio values in the same sorted order of timestamps.
     ratio_list = [ratio_dict[ts] for ts in timestamps]
-    plt.plot(timeMyrs, ratio_list, label='Ratio', color='black', linestyle='-', marker='o', linewidth=2)
+    plt.plot(timeMyrs, ratio_list, label='Ratio', color='red', linestyle='-', marker='o', linewidth=2)
     
     # Add labels, title, and grid
     plt.xlabel('Time (Myr)', fontsize=18)
-    plt.ylabel('Ratio', fontsize=18)
-    plt.title('Temperature Composition and Ratio over Time', fontsize=20)
-    plt.legend(fontsize=12, loc='best')
+    plt.ylabel('Interconnectedness Ratio', fontsize=18)
+    plt.title('Temperature Composition', fontsize=20)
+    
     plt.grid(True, linestyle='--', linewidth=0.5)
+    plt.ylim(0, 1)
+
+    # lines, labels = plt.get_legend_handles_labels()
+    # plt.legend(lines, labels, fontsize=12, loc='best', frameon=True, fancybox=True, shadow=True)
+    plt.legend(fontsize=12, loc='best', frameon=True, fancybox=True, shadow=True)
+
     
     plt.tight_layout()
     plt.savefig(output_file, dpi=300)
@@ -275,7 +282,7 @@ def main():
     parser.add_argument('-lb', '--lower_bound', default=0, type=int, help="Lower bound for the cube")
     parser.add_argument('-up', '--upper_bound', default=256, type=int, help="Upper bound for the cube")
     parser.add_argument('-pixb', '--pixel_boundary', default=256, type=int, help="Pixel resolution for the grid")
-    parser.add_argument('i', 'interval', default=10, type = int, help='Timestamp increase interval')
+    parser.add_argument('-i', '--interval', default=10, type = int, help='Timestamp increase interval')
     args = parser.parse_args()
 
     os.makedirs(args.output_root, exist_ok=True)
@@ -294,20 +301,22 @@ def main():
         )
         
         # Steps 3 & 4: Apply morphological operations and compute the difference mask
-        mask_diff = morphological_difference(mask_cube, kernel_size=10)
+        mask_diff, eroded = morphological_difference(mask_cube, kernel_size=10)
         
         # Steps 5, 6 & 7: Accumulate temperature data, plot the histogram, and mark the cutoff
         
         output_file = os.path.join(args.output_root, f'{current_timestamp}.png')
 
-        ratio, temp_1d = plot_temperature_histogram(temp_cube, mask_diff, output_file)
+        ratio, temp_1d = plot_temperature_histogram(temp_cube, mask_diff, eroded, current_timestamp, output_file)
         ratio_dict[current_timestamp] = ratio
         temp_dict[current_timestamp] = temp_1d
+        
+        print(f"{current_timestamp} complete. ")
 
 
     output_file = os.path.join(args.output_root, 'ratio-evolution.png')
     plot_ratio(temp_dict, ratio_dict, output_file)
-    print(f"Done. Plot saved at: {args.output_file}")
+    print(f"Done. Plot saved at: {output_file}")
 
 if __name__ == "__main__":
     main()
