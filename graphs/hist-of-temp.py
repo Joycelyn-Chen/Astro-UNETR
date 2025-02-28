@@ -9,6 +9,8 @@ from matplotlib import colors
 DEBUG = True
 hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
 
+# python hist-of-temp.py --hdf5_root /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc --mask_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/hist-of-temp/ratio --start_timestamp 380 --end_timestamp 480 -i 10
+
 def load_mask_cube(mask_root, timestamp, cube_dim=256):
     """
     Step 1: Read the input 3D cube of binary masks.
