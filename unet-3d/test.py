@@ -13,6 +13,7 @@ import numpy as np
 from monai.transforms import Compose, LoadImage, ScaleIntensity, EnsureChannelFirst, Resize, Activations, AsDiscrete
 from monai.networks.nets import UNet
 
+# python test.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/unet-test/masks-output --model_path /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/unet-test/logs/net_checkpoint_40.pt
 
 def main():
     parser = argparse.ArgumentParser(description="UNet 3D Segmentation Inference")
@@ -78,7 +79,7 @@ def main():
         # Remove batch and channel dimensions.
         seg_array = output.squeeze().cpu().numpy().astype(np.uint8)
         # Save the output segmentation using the original affine.
-        output_filename = os.path.basename(image_path) + '.seg'
+        output_filename = os.path.basename(image_path).split('.')[0] + '.seg.nii.gz'
         output_path = os.path.join(args.output_dir, output_filename)
         seg_nifti = nib.Nifti1Image(seg_array, affine)
         nib.save(seg_nifti, output_path)
