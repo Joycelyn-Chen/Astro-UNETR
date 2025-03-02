@@ -33,6 +33,20 @@ from monai.utils import first
 
 import ignite
 import torch
+import argparse
+
+# python unet_segmentation_3d_ignite.py --data_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs --exp_name unet-test
+
+parser = argparse.ArgumentParser(description="Unet segmentation pipeline")
+parser.add_argument("--data_dir", default="/dataset/dataset0/", type=str, help="dataset directory")
+parser.add_argument("--output_dir", default="/dataset/dataset0/", type=str, help="dataset directory")
+parser.add_argument("--exp_name", default="unet-test", type=str, help="experiment name")
+
+
+args = parser.parse_args()
+output_directory = "./outputs/" + args.exp_name
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
 
 directory = os.environ.get("MONAI_DATA_DIRECTORY")
 if directory is not None:
@@ -40,15 +54,6 @@ if directory is not None:
 root_dir = tempfile.mkdtemp() if directory is None else directory
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-
-for i in range(40):
-    im, seg = create_test_image_3d(128, 128, 128, num_seg_classes=1)
-
-    n = nib.Nifti1Image(im, np.eye(4))
-    nib.save(n, os.path.join(root_dir, f"im{i}.nii.gz"))
-
-    n = nib.Nifti1Image(seg, np.eye(4))
-    nib.save(n, os.path.join(root_dir, f"seg{i}.nii.gz"))
 
 images = sorted(glob.glob(os.path.join(root_dir, "im*.nii.gz")))
 segs = sorted(glob.glob(os.path.join(root_dir, "seg*.nii.gz")))
