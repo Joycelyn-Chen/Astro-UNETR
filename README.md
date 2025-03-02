@@ -1,6 +1,13 @@
 # Astro-UNETR
 - This is a 3D transformer implementation for tracking the superbubbles in magnetohydrodynamics simulation environement. 
 
+## Backbone
+### `swin-unetr`
+- A transformer based unet segmentation model, originally used for 
+
+### `unet-3d`
+
+
 ## sam2 
 - clone from the original [sam2 repo](https://github.com/facebookresearch/sam2).
 
@@ -19,10 +26,8 @@ cd checkpoints/
 
 
 
-## TODOs
-- Methods
-- [ ] Implement UNet models
 
+## TODOs
 - Documentation
 - [ ] Add teaser figure
 
