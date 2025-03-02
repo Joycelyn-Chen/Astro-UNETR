@@ -8,7 +8,6 @@ from pathlib import Path
 import argparse
 
 import torch
-# from monai.config import print_config
 from monai.data import ArrayDataset, DataLoader, decollate_batch
 from monai.handlers import MeanDice, MLFlowHandler, StatsHandler, TensorBoardImageHandler, TensorBoardStatsHandler
 from monai.losses import DiceLoss
