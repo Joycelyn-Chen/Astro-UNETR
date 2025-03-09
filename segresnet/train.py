@@ -26,16 +26,8 @@ from monai.handlers import StatsHandler, TensorBoardStatsHandler, MLFlowHandler,
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.handlers import ModelCheckpoint
 
-
-
-
-
-
 # python train.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs --exp_name segresnet-test --max_epochs 10 
 
-
-
-# ------------------------------------------------------------------------------
 # Helper transform: duplicate single channel to 4 channels.
 def duplicate_channels(x):
     """
