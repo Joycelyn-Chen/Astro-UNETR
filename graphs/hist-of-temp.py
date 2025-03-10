@@ -80,7 +80,7 @@ def morphological_difference(mask_cube, kernel_size=5):
     # Perform 3D dilation and erosion
     eroded = ndimage.binary_erosion(mask_cube, structure=structure)
 
-    structure = spherical_kernel(kernel_size=5)
+    structure = spherical_kernel(kernel_size=3)     # kernel_size=5
     mask_original = ndimage.binary_dilation(eroded, structure=structure)
 
     structure = spherical_kernel(kernel_size=10)
@@ -177,6 +177,7 @@ def plot_ratio(temp_dict, ratio_dict, output_file):
       - Plot a stacked bar (one bin per timestamp) where each colored section corresponds
         to a temperature category.
       - Overlay a line plot showing the ratio value for that timestamp.
+      - Overlay a line plot connecting the top of the "hot" bars, with dots on each point.
     
     Inputs:
         temp_dict: dictionary with keys as timestamps and values as 1D arrays of temperatures.
@@ -212,7 +213,7 @@ def plot_ratio(temp_dict, ratio_dict, output_file):
             hot_fracs.append(0)
             continue
         
-        # Count data points in each category (note the use of strict inequalities as described)
+        # Count data points in each category (using strict inequalities as described)
         cold = np.sum(temps < 39.8)
         cool = np.sum((temps > 39.8) & (temps < 1e4))
         warm = np.sum((temps > 1e4) & (temps < 2e4))
@@ -228,46 +229,46 @@ def plot_ratio(temp_dict, ratio_dict, output_file):
     
     # Create the figure and axis
     plt.figure(figsize=(12, 8))
-    bar_width = 0.4  # width of each bar
+    bar_width = 0.8  # width of each bar
     
     # Plot the stacked bars.
-    # The first layer (cold) starts at 0.
-    plt.bar(timeMyrs, cold_fracs, width=bar_width, color='#BDB5AF', label='Cold')
-    # Next layer (cool) starts at the top of cold layer.
-    plt.bar(timeMyrs, cool_fracs, width=bar_width, bottom=cold_fracs, color='#92AAC3', label='Cool')
+    # The bottom layer (hot) is plotted first.
+    plt.bar(timeMyrs, hot_fracs, width=bar_width, color='#E2690D', label='Hot')
+    plt.bar(timeMyrs, trans_fracs, width=bar_width, bottom=hot_fracs, color='#E3AA52', label='Transition')
     
     # Compute cumulative bottoms for stacking subsequent layers
-    cum_bottom = np.array(cold_fracs) + np.array(cool_fracs)
+    cum_bottom = np.array(hot_fracs) + np.array(trans_fracs)
     plt.bar(timeMyrs, warm_fracs, width=bar_width, bottom=cum_bottom, color='#B8A750', label='Warm')
     
     cum_bottom += np.array(warm_fracs)
-    plt.bar(timeMyrs, trans_fracs, width=bar_width, bottom=cum_bottom, color='#E3AA52', label='Transition')
+    plt.bar(timeMyrs, cool_fracs, width=bar_width, bottom=cum_bottom, color='#92AAC3', label='Cool')
     
-    cum_bottom += np.array(trans_fracs)
-    plt.bar(timeMyrs, hot_fracs, width=bar_width, bottom=cum_bottom, color='#E2690D', label='Hot')
+    cum_bottom += np.array(cool_fracs)
+    plt.bar(timeMyrs, cold_fracs, width=bar_width, bottom=cum_bottom, color='#BDB5AF', label='Cold')
     
     # Overlay the ratio line plot.
     # Get ratio values in the same sorted order of timestamps.
     ratio_list = [ratio_dict[ts] for ts in timestamps]
-    plt.plot(timeMyrs, ratio_list, label='Ratio', color='red', linestyle='-', marker='o', linewidth=2)
+    # plt.plot(timeMyrs, ratio_list, label='Ratio', color='red', linestyle='-', marker='o', linewidth=2)
+    
+    # New: Overlay a line plot connecting the top of the "hot" bars (using hot_fracs data)
+    plt.plot(timeMyrs, hot_fracs, label='Ratio', color='black', linestyle='-', marker='o', linewidth=2)
+    
+    
+    print(f"\n\nhot frac: {hot_fracs}\n\n")
     
     # Add labels, title, and grid
     plt.xlabel('Time (Myr)', fontsize=18)
     plt.ylabel('Interconnectedness Ratio', fontsize=18)
     plt.title('Temperature Composition', fontsize=20)
-    
     plt.grid(True, linestyle='--', linewidth=0.5)
     plt.ylim(0, 1)
-
-    # lines, labels = plt.get_legend_handles_labels()
-    # plt.legend(lines, labels, fontsize=12, loc='best', frameon=True, fancybox=True, shadow=True)
+    
     plt.legend(fontsize=12, loc='best', frameon=True, fancybox=True, shadow=True)
-
     
     plt.tight_layout()
     plt.savefig(output_file, dpi=300)
     plt.close()
-
 
 
 def main():
@@ -314,8 +315,10 @@ def main():
         print(f"{current_timestamp} complete. ")
 
 
-    output_file = os.path.join(args.output_root, 'ratio-evolution.png')
+    output_file = os.path.join(args.output_root, f'{args.start_timestamp}-{args.end_timestamp}.png')
     plot_ratio(temp_dict, ratio_dict, output_file)
+
+    print(f"ratio:\n{ratio_dict}")
     print(f"Done. Plot saved at: {output_file}")
 
 if __name__ == "__main__":
