@@ -4,60 +4,59 @@ import json
 import argparse
 import matplotlib.pyplot as plt
 
+# python hist-of-ratio.py --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/hist-of-temp
 
+plot_labels = ['Discrete Bubble', 'SB230', 'Interconnected structure']
 
-def load_dict_from_json(filename):
+def load_data_from_json(filename):
     """
-    Loads a dictionary from a JSON file.
+    Loads data from a JSON file. The file is expected to contain a list of dictionaries.
     
     Parameters:
-    - filename (str): The name of the file to load the dictionary from.
+    - filename (str): The name of the file to load the data from.
     
     Returns:
-    - dict: The dictionary loaded from the file.
+    - list: The list of dictionaries loaded from the file.
     """
     with open(filename, 'r') as file:
         return json.load(file)
 
-def plot_histogram_from_dict(data_dict, output_path):
+def plot_histograms_from_list(data_list, output_path):
     """
-    Plots a histogram based on the values from the provided dictionary.
+    Plots histograms for each dictionary in the list, each in a different color.
     
     Parameters:
-    - data_dict (dict): Dictionary containing data values to plot.
+    - data_list (list): A list of dictionaries containing data values to plot.
     - output_path (str): Path to save the generated histogram image.
     """
-    # Extract values from the dictionary
-    values = list(data_dict.values())
+    plt.style.use('seaborn-v0_8-whitegrid')
+    fig, ax = plt.subplots(figsize=(10, 6))
     
     # Define histogram parameters
     n_bins = 100
     x_min, x_max = 0, 1  # Adjust as needed based on your data range
     bins = np.linspace(x_min, x_max, n_bins + 1)
     
-    # Compute logarithmic values for plotting
-    # log_values = np.log10(values)
+    # Use the default color cycle from matplotlib
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     
-    # Set up the plot
-    plt.style.use('seaborn-v0_8-whitegrid')
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # Loop over each dictionary in the list and plot its histogram
+    for idx, data_dict in enumerate(data_list):
+        values = list(data_dict.values())
+        color = colors[idx % len(colors)]
+        ax.hist(values, bins=bins, histtype='step', linestyle='solid',
+                color=color, label=f"{plot_labels[idx]}")
     
-    # Plot the histogram
-    ax.hist(values, bins=bins, histtype='step', linestyle='solid', color='black')
-    
-    
-    # Set axis labels and title
+    # Set axis labels, title, limits, and logarithmic scale for y-axis
     ax.set_xlabel("$\mathcal{R}$", fontsize=12)
     ax.set_ylabel("Frequency", fontsize=12)
     ax.set_title("Histogram of Ratio", fontsize=14)
-    
-    # Set axis limits and scaling
     ax.set_xlim(x_min, x_max)
-    # ax.set_ylim(1e-5, 1e2)
     ax.set_yscale('log')
     
-    # Display grid lines
+    # Display grid lines and legend
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.legend()
     
     # Save the plot
     plt.tight_layout()
@@ -66,23 +65,21 @@ def plot_histogram_from_dict(data_dict, output_path):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Plot the histogram of ratio values around the bubble"
+        description="Plot histograms of ratio values from multiple datasets."
     )
     parser.add_argument("--input_root", default=".", type=str, help="Input directory")
     parser.add_argument("--output_root", default="./Dataset", type=str, help="Output directory")
-
-    
     
     args = parser.parse_args()
     ratio_file = os.path.join(args.input_root, 'interconnectedness-ratio.json')
-    loaded_dict = load_dict_from_json(ratio_file)
-
+    
+    # Load list of dictionaries from the JSON file
+    data_list = load_data_from_json(ratio_file)
+    
     output_file = os.path.join(args.output_root, 'ratio-histogram.png')
-    plot_histogram_from_dict(loaded_dict, output_file)
-
+    plot_histograms_from_list(data_list, output_file)
+    
     print(f"Done. Plot saved at: {output_file}")
-
 
 if __name__ == "__main__":
     main()
-
