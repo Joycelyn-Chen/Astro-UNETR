@@ -10,7 +10,7 @@ from utils.data_utils import get_loader, get_astro_loader
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import SwinUNETR
 
-# python test.py --json_list=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/MHD-NII.json --data_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test --feature_size=48 --infer_overlap=0.6 --pretrained_model_name=model_final.pt --pretrained_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/swin-unetr-epoch300/logs --workers 8 --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/swin-unetr-epoch300/masks-output
+# python test.py --json_list=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/MHD-NII.json --data_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test --feature_size=48 --infer_overlap=0.6 --pretrained_model_name=model_final.pt --pretrained_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/swin-unetr-epoch300/logs --workers 0 --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/swin-unetr-epoch300/masks-output
 
 
 parser = argparse.ArgumentParser(description="Swin UNETR segmentation pipeline")
@@ -31,9 +31,9 @@ parser.add_argument("--b_max", default=1.0, type=float, help="b_max in ScaleInte
 parser.add_argument("--space_x", default=1.5, type=float, help="spacing in x direction")
 parser.add_argument("--space_y", default=1.5, type=float, help="spacing in y direction")
 parser.add_argument("--space_z", default=2.0, type=float, help="spacing in z direction")
-parser.add_argument("--roi_x", default=256, type=int, help="roi size in x direction")
-parser.add_argument("--roi_y", default=256, type=int, help="roi size in y direction")
-parser.add_argument("--roi_z", default=256, type=int, help="roi size in z direction")
+parser.add_argument("--roi_x", default=128, type=int, help="roi size in x direction")
+parser.add_argument("--roi_y", default=128, type=int, help="roi size in y direction")
+parser.add_argument("--roi_z", default=128, type=int, help="roi size in z direction")
 parser.add_argument("--dropout_rate", default=0.0, type=float, help="dropout rate")
 parser.add_argument("--distributed", action="store_true", help="start distributed training")
 parser.add_argument("--workers", default=8, type=int, help="number of workers")
@@ -69,7 +69,7 @@ def main():
     pretrained_pth = os.path.join(pretrained_dir, model_name)
     
     model = SwinUNETR(
-        img_size=256,
+        img_size=128,
         in_channels=args.in_channels,
         out_channels=args.out_channels,
         feature_size=args.feature_size,
