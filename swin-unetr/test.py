@@ -92,6 +92,8 @@ def main():
         overlap=args.infer_overlap,
     )
 
+    print(f"test data: {len(test_loader)}")
+
     with torch.no_grad():
         for i, batch in enumerate(test_loader):
             image = batch["image"].to(device)
