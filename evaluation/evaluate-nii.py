@@ -115,7 +115,7 @@ def main():
         # Extract the year from the ground truth filename.
         filename = os.path.basename(gt_path)
         if filename.endswith('.nii.gz'):
-            year_str = filename[:-7]  # remove ".nii.gz"
+            year_str = filename[:-11]  # remove ".seg.nii.gz"
         else:
             year_str = os.path.splitext(filename)[0]
         try:
