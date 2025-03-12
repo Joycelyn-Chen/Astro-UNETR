@@ -39,17 +39,6 @@ def compute_bounding_box_diagonal(segmentation):
     diag_length = np.linalg.norm(max_idx - min_idx)
     return diag_length
 
-# Function to calculate averages for a given fold.
-def compute_fold_metrics(years_set, fold_name):
-    fold_items = [item for item in results if item["year"] in years_set]
-    if fold_items:
-        avg_dice = sum(item["dice"] for item in fold_items) / len(fold_items)
-        avg_hd_pct = sum(item["hd_percentage"] for item in fold_items) / len(fold_items)
-        print(f"{fold_name}:")
-        print(f"  Average Dice Score: {avg_dice:.4f}")
-        print(f"  Average HD Percentage: {100 - avg_hd_pct:.2f}%\n")
-    else:
-        print(f"{fold_name}: No data available.\n")
         
 def main():
     parser = argparse.ArgumentParser(description="Segmentation Inference Evaluation")
@@ -136,7 +125,18 @@ def main():
         # print(f"  Hausdorff Distance: {hausdorff_value:.4f}")
         # print(f"  HD Percentage: {100 - hd_percentage:.2f}%\n")
     
-    
+    # Function to calculate averages for a given fold.
+    def compute_fold_metrics(years_set, fold_name):
+        fold_items = [item for item in results if item["year"] in years_set]
+        if fold_items:
+            avg_dice = sum(item["dice"] for item in fold_items) / len(fold_items)
+            avg_hd_pct = sum(item["hd_percentage"] for item in fold_items) / len(fold_items)
+            print(f"{fold_name}:")
+            print(f"  Average Dice Score: {avg_dice:.4f}")
+            print(f"  Average HD Percentage: {100 - avg_hd_pct:.2f}%\n")
+        else:
+            print(f"{fold_name}: No data available.\n")
+            
     print("\nFold-wise Evaluation:")
     compute_fold_metrics(fold1_years, "Fold 1 (Years 380-590)")
     compute_fold_metrics(fold2_years, "Fold 2 (Years 600-790)")
