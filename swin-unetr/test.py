@@ -1,14 +1,3 @@
-# Copyright 2020 - 2022 MONAI Consortium
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#     http://www.apache.org/licenses/LICENSE-2.0
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import argparse
 import os
 from functools import partial
@@ -21,10 +10,12 @@ from utils.data_utils import get_loader, get_astro_loader
 from monai.inferers import sliding_window_inference
 from monai.networks.nets import SwinUNETR
 
-# python test.py --json_list=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/MHD-NII.json --data_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --feature_size=48 --infer_overlap=0.6 --pretrained_model_name=model_final.pt --pretrained_dir=runs/astro-unetr --workers 0 --exp_name test-astro-nii-0111
+# python test.py --json_list=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/MHD-NII.json --data_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test --feature_size=48 --infer_overlap=0.6 --pretrained_model_name=model_final.pt --pretrained_dir=/home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/swin-unetr-epoch300/logs --workers 0 --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/swin-unetr-epoch300/masks-output
+
 
 parser = argparse.ArgumentParser(description="Swin UNETR segmentation pipeline")
 parser.add_argument("--data_dir", default="/dataset/dataset0/", type=str, help="dataset directory")
+parser.add_argument("--output_dir", default="/dataset/dataset0/", type=str, help="output directory")
 parser.add_argument("--exp_name", default="test1", type=str, help="experiment name")
 parser.add_argument("--json_list", default="dataset_0.json", type=str, help="dataset json file")
 parser.add_argument("--fold", default=1, type=int, help="data fold")
@@ -61,11 +52,10 @@ parser.add_argument(
     help="pretrained checkpoint directory",
 )
 
-
 def main():
     args = parser.parse_args()
     args.test_mode = True
-    output_directory = "./outputs/" + args.exp_name
+    output_directory = args.output_dir
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
     if args.astro_use:
@@ -77,6 +67,7 @@ def main():
     model_name = args.pretrained_model_name
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     pretrained_pth = os.path.join(pretrained_dir, model_name)
+    
     model = SwinUNETR(
         img_size=128,
         in_channels=args.in_channels,
@@ -89,9 +80,10 @@ def main():
     )
     model_dict = torch.load(pretrained_pth)["state_dict"]
     model.load_state_dict(model_dict)
-    model.eval()
     model.to(device)
+    model.eval()
 
+    # Set up sliding window inference
     model_inferer_test = partial(
         sliding_window_inference,
         roi_size=[args.roi_x, args.roi_y, args.roi_z],
@@ -102,24 +94,28 @@ def main():
 
     with torch.no_grad():
         for i, batch in enumerate(test_loader):
-            image = batch["image"].cuda()
+            image = batch["image"].to(device)
             affine = batch["image_meta_dict"]["original_affine"][0].numpy()
             
-            # Joy's alternation for astro dataset
+            # Get the case name from the filename
             timestamp = batch["image_meta_dict"]["filename_or_obj"][0].split("/")[-1].split(".")[0]
             img_name = timestamp + ".nii.gz"
             
             print("Inference on case {}".format(img_name))
-            prob = torch.sigmoid(model_inferer_test(image))
-            seg = prob[0].detach().cpu().numpy()
-            seg = (seg > 0.5).astype(np.int8)
-            seg_out = np.zeros((seg.shape[1], seg.shape[2], seg.shape[3]))
-            seg_out[seg[1] == 1] = 2
-            seg_out[seg[0] == 1] = 1
-            seg_out[seg[2] == 1] = 4
-            nib.save(nib.Nifti1Image(seg_out.astype(np.uint8), affine), os.path.join(output_directory, img_name))
+            # Run sliding window inference and apply sigmoid activation.
+            output = model_inferer_test(image)
+            activated_output = torch.sigmoid(output)
+            # Aggregate the three channels by taking the maximum probability across them.
+            aggregated_output = activated_output.max(dim=1, keepdim=True)[0]
+            # Threshold to get a binary mask.
+            binary_mask = (aggregated_output > 0.5).float()
+            
+            # Squeeze the batch and channel dimensions, move to CPU and convert to numpy.
+            seg_array = binary_mask.squeeze().detach().cpu().numpy().astype(np.uint8)
+            nib.save(nib.Nifti1Image(seg_array, affine), os.path.join(output_directory, img_name))
         print("Finished inference!")
-
 
 if __name__ == "__main__":
     main()
+
+

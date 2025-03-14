@@ -1,17 +1,18 @@
 import os
 import glob
 import torch
+import torch.nn.functional as F  # For interpolation
 import nibabel as nib
 from monai.metrics import DiceMetric, HausdorffDistanceMetric
 import argparse
 import numpy as np
 
-# python evaluate-nii.py --pred_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/unet-test/masks-output --gt_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test/masks
+# python evaluate-nii.py --pred_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/unet-test-epoch100/masks-output --gt_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test/masks
+# python evaluate-nii.py --pred_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/segresnet-test/masks-output --gt_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test/masks
 
 def load_nifti(filepath):
     """Load a nii.gz file and return a torch tensor."""
     data = nib.load(filepath).get_fdata()
-    # Convert to tensor and ensure type is float32.
     return torch.tensor(data).float()
 
 def add_batch_channel(tensor):
@@ -38,74 +39,116 @@ def compute_bounding_box_diagonal(segmentation):
     diag_length = np.linalg.norm(max_idx - min_idx)
     return diag_length
 
+        
 def main():
     parser = argparse.ArgumentParser(description="Segmentation Inference Evaluation")
-    parser.add_argument("--pred_dir", type=str, required=True, help="Directory containing result images (.nii.gz)")
+    parser.add_argument("--pred_dir", type=str, required=True, help="Directory containing predicted images (.nii.gz)")
     parser.add_argument("--gt_dir", type=str, required=True, help="Directory containing ground truth images (.nii.gz)")
+    parser.add_argument("--resolution", type=int, default=256, help="Desired resolution to adjust GT data to match prediction resolution.")
     args = parser.parse_args()
     
     pred_files = sorted(glob.glob(os.path.join(args.pred_dir, "*.nii.gz")))
     gt_files = sorted(glob.glob(os.path.join(args.gt_dir, "*.nii.gz")))
-
+    
+    print("Number of prediction files:", len(pred_files))
+    print("Number of ground truth files:", len(gt_files))
+    
     if len(pred_files) != len(gt_files):
         raise ValueError("Mismatch between number of prediction and ground truth files.")
+    
+    # Define fold groups.
+    # Fold 1: first half of lifespan (years 380 to 590)
+    fold1_years = set(range(380, 600, 10))
+    # Fold 2: second half of lifespan (years 600 to 790)
+    fold2_years = set(range(600, 800, 10))
+    # Fold 3: discrete bubble years.
+    fold3_years = {380, 390, 400, 410, 430, 440, 450, 460, 570, 580, 590, 600, 610, 620}
+    # Fold 4: interconnected bubble years.
+    fold4_years = {420, 470, 480, 490, 500, 510, 520, 530, 540, 550, 560, 630, 640, 650,
+                     660, 670, 680, 690, 700, 710, 720, 730, 740, 750, 760, 770, 780, 790}
+    
+    # Prepare a list to store computed metrics for each file.
+    results = []
 
     # Create metric objects.
     dice_metric = DiceMetric(include_background=True, reduction="mean")
     hausdorff_metric = HausdorffDistanceMetric(include_background=True, reduction="mean")
-
-    dice_scores = []
-    hausdorff_scores = []
-    hd_percentages = []
-
+    
     for pred_path, gt_path in zip(pred_files, gt_files):
-        # Load the prediction and ground truth volumes.
+        # Load prediction and ground truth.
         pred = load_nifti(pred_path)
         gt = load_nifti(gt_path)
         
-        # Add batch and channel dimensions as required by MONAI.
+        # Add batch and channel dimensions.
         pred = add_batch_channel(pred)
         gt = add_batch_channel(gt)
         
-        # Reset the metrics (they are stateful)
+        # Adjust GT resolution if needed.
+        if gt.shape[2] != args.resolution:
+            gt = F.interpolate(gt, size=(args.resolution, args.resolution, args.resolution), mode='nearest')
+        
+        # Reset and update metrics.
         dice_metric.reset()
         hausdorff_metric.reset()
-        
-        # Update the metrics with the current pair.
         dice_metric(y_pred=pred, y=gt)
         hausdorff_metric(y_pred=pred, y=gt)
         
-        # Compute aggregated metrics.
         dice_value = dice_metric.aggregate().item()
         hausdorff_value = hausdorff_metric.aggregate().item()
         
-        # Compute the bounding box diagonal from the ground truth.
-        # We assume gt is single-channel; extract first channel of first batch.
+        # Compute the bounding box diagonal from ground truth.
         gt_np = gt.cpu().numpy()[0, 0]
         diag_length = compute_bounding_box_diagonal(gt_np)
-        if diag_length == 0:
-            hd_percentage = 0.0
+        hd_percentage = (hausdorff_value / diag_length * 100.0) if diag_length > 0 else 0.0
+        
+        # Extract the year from the ground truth filename.
+        filename = os.path.basename(gt_path)
+        if filename.endswith('.nii.gz'):
+            year_str = filename[:-11]  # remove ".seg.nii.gz"
         else:
-            hd_percentage = (hausdorff_value / diag_length) * 100.0
-
-        dice_scores.append(dice_value)
-        hausdorff_scores.append(hausdorff_value)
-        hd_percentages.append(hd_percentage)
+            year_str = os.path.splitext(filename)[0]
+        try:
+            year = int(year_str)
+        except ValueError:
+            raise ValueError(f"Filename {filename} does not start with a valid year.")
+        
+        # Save the results for this file.
+        results.append({
+            "filename": os.path.basename(pred_path),
+            "year": year,
+            "dice": dice_value,
+            "hd_percentage": hd_percentage
+        })
         
         print(f"{os.path.basename(pred_path)}:")
-        print(f"  Dice Score: {dice_value:.4f}")
-        print(f"  Hausdorff Distance: {hausdorff_value:.4f}")
-        print(f"  HD Percentage: {100 - hd_percentage:.2f}%\n")
+        # print(f"  Dice Score: {dice_value:.4f}")
+        # print(f"  Hausdorff Distance: {hausdorff_value:.4f}")
+        # print(f"  HD Percentage: {100 - hd_percentage:.2f}%\n")
+    
+    # Function to calculate averages for a given fold.
+    def compute_fold_metrics(years_set, fold_name):
+        fold_items = [item for item in results if item["year"] in years_set]
+        if fold_items:
+            avg_dice = sum(item["dice"] for item in fold_items) / len(fold_items)
+            avg_hd_pct = sum(item["hd_percentage"] for item in fold_items) / len(fold_items)
+            print(f"{fold_name}:")
+            print(f"  Average Dice Score: {avg_dice:.4f}")
+            print(f"  Average HD Percentage: {100 - avg_hd_pct:.2f}%\n")
+        else:
+            print(f"{fold_name}: No data available.\n")
+            
+    print("\nFold-wise Evaluation:")
+    compute_fold_metrics(fold1_years, "Fold 1 (Years 380-590)")
+    compute_fold_metrics(fold2_years, "Fold 2 (Years 600-790)")
+    compute_fold_metrics(fold3_years, "Fold 3 (Discrete Bubble Years)")
+    compute_fold_metrics(fold4_years, "Fold 4 (Interconnected Bubble Years)")
 
-    # Compute average scores over all volumes.
-    avg_dice = sum(dice_scores) / len(dice_scores)
-    avg_hausdorff = sum(hausdorff_scores) / len(hausdorff_scores)
-    avg_hd_percentage = sum(hd_percentages) / len(hd_percentages)
-
+    # Overall metrics across all files.
+    overall_dice = sum(item["dice"] for item in results) / len(results)
+    overall_hd_pct = sum(item["hd_percentage"] for item in results) / len(results)
     print("\nOverall Evaluation:")
-    print(f"Average Dice Score: {avg_dice:.4f}")
-    print(f"Average Hausdorff Distance: {avg_hausdorff:.4f}")
-    print(f"Average HD Percentage: {100 - avg_hd_percentage:.2f}%")
+    print(f"Average Dice Score: {overall_dice:.4f}")
+    print(f"Average HD Percentage: {100 - overall_hd_pct:.2f}%")
 
 if __name__ == "__main__":
     main()
