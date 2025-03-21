@@ -41,8 +41,8 @@ def train_epoch(model, loader, optimizer, scaler, epoch, loss_func, args):
             logits = model(data)
 
             # joy's doing
-            print(f"logits type: {type(logits)}, shape: {logits.shape}")
-            print(f"{logits[150]}")
+            # print(f"logits type: {type(logits)}, shape: {logits.shape}")
+            # print(f"{logits[150]}")
             
 
             loss = loss_func(logits, target)
