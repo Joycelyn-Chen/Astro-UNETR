@@ -28,3 +28,5 @@ if __name__ == '__main__':
         rename_files(args.target_dir)
     else:
         print("The specified directory does not exist.")
+
+# python rename_multimodal_output.py --target_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/astro-unetr-multimodal-epoch100/masks-output
