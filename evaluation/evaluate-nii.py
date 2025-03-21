@@ -7,8 +7,7 @@ from monai.metrics import DiceMetric, HausdorffDistanceMetric
 import argparse
 import numpy as np
 
-# python evaluate-nii.py --pred_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/unet-test-epoch100/masks-output --gt_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test/masks
-# python evaluate-nii.py --pred_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/segresnet-test/masks-output --gt_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test/masks
+# python evaluate-nii.py --pred_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/astro-unetr-multimodal-epoch100/masks-output --gt_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test/masks
 
 def load_nifti(filepath):
     """Load a nii.gz file and return a torch tensor."""
