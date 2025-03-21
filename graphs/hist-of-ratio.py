@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 # python hist-of-ratio.py --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/hist-of-temp
 
 plot_labels = ['Discrete Bubble', 'SB230', 'Interconnected structure']
+color_labels = ['#446e1a', '#fcbf20', '#e73332']
 
 def load_data_from_json(filename):
     """
@@ -43,7 +44,7 @@ def plot_histograms_from_list(data_list, output_path):
     # Loop over each dictionary in the list and plot its histogram
     for idx, data_dict in enumerate(data_list):
         values = list(data_dict.values())
-        color = colors[idx % len(colors)]
+        color = color_labels[idx] #colors[idx % len(colors)]
         ax.hist(values, bins=bins, histtype='step', linestyle='solid',
                 color=color, label=f"{plot_labels[idx]}")
     
@@ -52,7 +53,7 @@ def plot_histograms_from_list(data_list, output_path):
     ax.set_ylabel("Frequency", fontsize=12)
     ax.set_title("Histogram of Ratio", fontsize=14)
     ax.set_xlim(x_min, x_max)
-    ax.set_yscale('log')
+    # ax.set_yscale('log')
     
     # Display grid lines and legend
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
