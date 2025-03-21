@@ -10,6 +10,7 @@ parser = argparse.ArgumentParser(description="Converting grayscale images to .ni
 parser.add_argument("--input_root", default="./Dataset", type=str, help="input directory")
 parser.add_argument("--output_root", default="./Dataset", type=str, help="output directory")
 
+modality_filename = {'dens': 'd', 'temp': 't', 'velz': 'v'}
 
 def load_slices_as_cube(folder_path):
     """
@@ -55,19 +56,20 @@ def convert_dataset_to_nii(root_dir, output_dir):
         if not os.path.exists(output_base):
             os.makedirs(output_base)
 
-        for timestamp in os.listdir(input_base):
-            timestamp_folder = os.path.join(input_base, timestamp)
-            if not os.path.isdir(timestamp_folder):
-                continue
+        for modality in os.listdir(input_base):
+            for timestamp in os.listdir(os.path.join(input_base, modality)):
+                timestamp_folder = os.path.join(input_base, modality, timestamp)
+                if not os.path.isdir(timestamp_folder):
+                    continue
 
-            print(f"Processing {data_type}/{timestamp}...")
-            cube = load_slices_as_cube(timestamp_folder)
+                print(f"Processing {data_type}/{modality}/{timestamp}...")
+                cube = load_slices_as_cube(timestamp_folder)
 
-            # Define output file extension based on data type
-            file_extension = ".nii.gz" if data_type == "imgs" else ".seg.nii.gz"
-            output_path = os.path.join(output_base, f"{timestamp}{file_extension}")
+                # Define output file extension based on data type
+                file_extension = ".nii.gz" if data_type == "imgs" else ".seg.nii.gz"
+                output_path = os.path.join(output_base, f"{timestamp}_{modality_filename[modality]}{file_extension}")
 
-            save_as_nii(cube, output_path, affine)
+                save_as_nii(cube, output_path, affine)
 
 if __name__ == "__main__":
     args = parser.parse_args()
@@ -75,4 +77,4 @@ if __name__ == "__main__":
     convert_dataset_to_nii(args.input_root, args.output_root)
     print("Conversion complete!")
 
-# python img2nii.py --input_root /home/joycelyn/Desktop/Dataset/MHD-3DIS/ --output_root /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII
+# python img2nii.py --input_root /home/joycelyn/Desktop/Dataset/MHD-3DIS/ --output_root /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/train/imgs
