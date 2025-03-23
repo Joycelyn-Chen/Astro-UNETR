@@ -24,42 +24,130 @@ from utils.utils import AverageMeter, distributed_all_gather
 
 from monai.data import decollate_batch
 
+import torch.nn.functional as F
+
+def morphological_difference(mask):
+    """
+    Extracts the exterior ring from a binary segmentation mask.
+    
+    The exterior ring is computed as the difference between the mask and its eroded version.
+    Erosion is performed using a 3x3 kernel. A pixel is considered eroded (i.e., kept)
+    only if all of its 3x3 neighborhood pixels are 1.
+    
+    Args:
+        mask (torch.Tensor): Binary mask tensor of shape [N, 1, H, W].
+        
+    Returns:
+        torch.Tensor: Binary mask of the exterior ring of shape [N, 1, H, W].
+    """
+    # Define a 3x3 kernel filled with ones.
+    kernel = torch.ones((1, 1, 3, 3), device=mask.device, dtype=mask.dtype)
+    # Perform convolution to simulate erosion (padding=1 to maintain size).
+    eroded = F.conv2d(mask, kernel, padding=1)
+    # Keep pixels where the full 3x3 neighborhood is ones.
+    eroded_binary = (eroded == 9).float()
+    # The ring is the difference between the original mask and its eroded version.
+    ring = mask - eroded_binary
+    # Ensure the ring mask is binary.
+    ring = (ring > 0).float()
+    return ring
+
+def r_loss(pred_mask, temp_cube):
+    """
+    Computes the ratio loss (r_loss) that forces the segmented bubble to be as discrete as possible.
+    
+    The steps are as follows:
+      1. Use the predicted binary segmentation mask.
+      2. Extract the exterior ring mask from the segmentation mask.
+      3. Apply (cast) the ring mask onto the temperature cube.
+      4. Count the number of ring pixels with temperature values over 125.
+      5. Calculate the r_loss as the ratio of the count in step 4 to the total number of ring pixels.
+    
+    Args:
+        pred_mask (torch.Tensor): Binary segmentation mask of shape [N, 1, H, W].
+        temp_cube (torch.Tensor): Temperature cube tensor of shape [N, 1, H, W].
+        
+    Returns:
+        torch.Tensor: A scalar tensor representing the ratio loss.
+    """
+    # 2. Get the exterior ring.
+    ring_mask = morphological_difference(pred_mask)
+    
+    # 3. Apply the ring mask to the temperature cube.
+    ring_temp = temp_cube * ring_mask
+    
+    # 4. Count the number of ring pixels with temperature > 125.
+    count_over = (ring_temp > 125).float().sum()
+    
+    # 5. Count the total number of ring pixels.
+    total_ring = ring_mask.sum()
+    
+    # Avoid division by zero.
+    epsilon = 1e-6
+    ratio_loss = count_over / (total_ring + epsilon)
+    
+    # Return as a tensor (the result of torch operations is already a tensor).
+    return ratio_loss
+
 
 def train_epoch(model, loader, optimizer, scaler, epoch, loss_func, args):
     model.train()
     start_time = time.time()
     run_loss = AverageMeter()
+    
     for idx, batch_data in enumerate(loader):
+        # Retrieve data and target from batch
         if isinstance(batch_data, list):
             data, target = batch_data
         else:
             data, target = batch_data["image"], batch_data["label"]
+            
         data, target = data.cuda(args.rank), target.cuda(args.rank)
+        temp_cube = data.cuda(2) # rank 2 is the temperature cube
+        
+        # Zero gradients
         for param in model.parameters():
             param.grad = None
+        
         with autocast(enabled=args.amp):
+            # Forward pass
             logits = model(data)
-
-            # joy's doing
-            # print(f"logits type: {type(logits)}, shape: {logits.shape}")
-            # print(f"{logits[150]}")
             
-
-            loss = loss_func(logits, target)
+            # Compute the original dice loss
+            dice_loss_val = loss_func(logits, target)
+            
+            # Convert logits to a binary segmentation mask
+            pred_mask = (torch.sigmoid(logits) > 0.5).float()
+            
+            # Compute the r_loss (ratio loss) using the predicted mask and the temperature cube
+            # Here we assume that the input data contains the temperature cube information.
+            r_loss_val = r_loss(pred_mask, temp_cube)
+            r_loss_val = r_loss_val.to(dtype=dice_loss_val.dtype, device=dice_loss_val.device)
+            
+            # Total loss is the sum of dice loss and ratio loss
+            total_loss = dice_loss_val + r_loss_val
+        
+        # Backward pass and optimizer step
         if args.amp:
-            scaler.scale(loss).backward()
+            scaler.scale(total_loss).backward()
             scaler.step(optimizer)
             scaler.update()
         else:
-            loss.backward()
+            total_loss.backward()
             optimizer.step()
+        
+        # Distributed loss aggregation (if applicable)
         if args.distributed:
-            loss_list = distributed_all_gather([loss], out_numpy=True, is_valid=idx < loader.sampler.valid_length)
+            loss_list = distributed_all_gather(
+                [total_loss], out_numpy=True, is_valid=idx < loader.sampler.valid_length
+            )
             run_loss.update(
-                np.mean(np.mean(np.stack(loss_list, axis=0), axis=0), axis=0), n=args.batch_size * args.world_size
+                np.mean(np.mean(np.stack(loss_list, axis=0), axis=0), axis=0),
+                n=args.batch_size * args.world_size
             )
         else:
-            run_loss.update(loss.item(), n=args.batch_size)
+            run_loss.update(total_loss.item(), n=args.batch_size)
+        
         if args.rank == 0:
             print(
                 "Epoch {}/{} {}/{}".format(epoch, args.max_epochs, idx, len(loader)),
@@ -67,9 +155,60 @@ def train_epoch(model, loader, optimizer, scaler, epoch, loss_func, args):
                 "time {:.2f}s".format(time.time() - start_time),
             )
         start_time = time.time()
+    
+    # Clear gradients after epoch
     for param in model.parameters():
         param.grad = None
+        
     return run_loss.avg
+
+
+# Original code
+# def train_epoch(model, loader, optimizer, scaler, epoch, loss_func, args):
+#     model.train()
+#     start_time = time.time()
+#     run_loss = AverageMeter()
+#     for idx, batch_data in enumerate(loader):
+#         if isinstance(batch_data, list):
+#             data, target = batch_data
+#         else:
+#             data, target = batch_data["image"], batch_data["label"]
+#         data, target = data.cuda(args.rank), target.cuda(args.rank)
+#         for param in model.parameters():
+#             param.grad = None
+#         with autocast(enabled=args.amp):
+#             logits = model(data)
+
+#             # joy's doing
+#             # print(f"logits type: {type(logits)}, shape: {logits.shape}")
+#             # print(f"{logits[150]}")
+            
+
+#             loss = loss_func(logits, target)
+#         if args.amp:
+#             scaler.scale(loss).backward()
+#             scaler.step(optimizer)
+#             scaler.update()
+#         else:
+#             loss.backward()
+#             optimizer.step()
+#         if args.distributed:
+#             loss_list = distributed_all_gather([loss], out_numpy=True, is_valid=idx < loader.sampler.valid_length)
+#             run_loss.update(
+#                 np.mean(np.mean(np.stack(loss_list, axis=0), axis=0), axis=0), n=args.batch_size * args.world_size
+#             )
+#         else:
+#             run_loss.update(loss.item(), n=args.batch_size)
+#         if args.rank == 0:
+#             print(
+#                 "Epoch {}/{} {}/{}".format(epoch, args.max_epochs, idx, len(loader)),
+#                 "loss: {:.4f}".format(run_loss.avg),
+#                 "time {:.2f}s".format(time.time() - start_time),
+#             )
+#         start_time = time.time()
+#     for param in model.parameters():
+#         param.grad = None
+#     return run_loss.avg
 
 
 def val_epoch(model, loader, epoch, acc_func, args, model_inferer=None, post_sigmoid=None, post_pred=None):
