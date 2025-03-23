@@ -26,29 +26,44 @@ from monai.data import decollate_batch
 
 import torch.nn.functional as F
 
-def morphological_difference(mask):
+def morphological_difference(mask: torch.Tensor) -> torch.Tensor:
     """
     Extracts the exterior ring from a binary segmentation mask.
     
-    The exterior ring is computed as the difference between the mask and its eroded version.
-    Erosion is performed using a 3x3 kernel. A pixel is considered eroded (i.e., kept)
-    only if all of its 3x3 neighborhood pixels are 1.
+    Supports both 2D and 3D masks.
+    
+    If the input mask has shape [N, C, H, W] (2D) or [N, C, D, H, W] (3D),
+    and if C > 1, the first channel is used.
+    
+    For 2D, erosion is performed using a 3x3 kernel (threshold = 9).
+    For 3D, erosion is performed using a 3x3x3 kernel (threshold = 27).
     
     Args:
-        mask (torch.Tensor): Binary mask tensor of shape [N, 1, H, W].
+        mask (torch.Tensor): Binary mask tensor of shape [N, C, H, W] or [N, C, D, H, W].
         
     Returns:
-        torch.Tensor: Binary mask of the exterior ring of shape [N, 1, H, W].
+        torch.Tensor: Binary mask of the exterior ring with the same spatial dimensions.
     """
-    # Define a 3x3 kernel filled with ones.
-    kernel = torch.ones((1, 1, 3, 3), device=mask.device, dtype=mask.dtype)
-    # Perform convolution to simulate erosion (padding=1 to maintain size).
-    eroded = F.conv2d(mask, kernel, padding=1)
-    # Keep pixels where the full 3x3 neighborhood is ones.
-    eroded_binary = (eroded == 9).float()
-    # The ring is the difference between the original mask and its eroded version.
+    if mask.dim() == 5:  # 3D input
+        # If more than one channel is provided, take the first channel.
+        if mask.size(1) > 1:
+            mask = mask[:, 0:1, :, :, :]
+        # Create a 3x3x3 kernel.
+        kernel = torch.ones((1, 1, 3, 3, 3), device=mask.device, dtype=mask.dtype)
+        # Convolve to simulate erosion (padding=1 keeps the same size).
+        eroded = F.conv3d(mask, kernel, padding=1)
+        # A voxel remains only if all 27 in its 3x3x3 neighborhood are 1.
+        eroded_binary = (eroded == 27).float()
+    elif mask.dim() == 4:  # 2D input
+        if mask.size(1) > 1:
+            mask = mask[:, 0:1, :, :]
+        kernel = torch.ones((1, 1, 3, 3), device=mask.device, dtype=mask.dtype)
+        eroded = F.conv2d(mask, kernel, padding=1)
+        eroded_binary = (eroded == 9).float()
+    else:
+        raise ValueError("Unsupported mask dimensions. Expected 4D or 5D tensor.")
+        
     ring = mask - eroded_binary
-    # Ensure the ring mask is binary.
     ring = (ring > 0).float()
     return ring
 
@@ -77,14 +92,16 @@ def r_loss(pred_mask, temp_cube):
     ring_temp = temp_cube * ring_mask
     
     # 4. Count the number of ring pixels with temperature > 125.
-    count_over = (ring_temp > 125).float().sum()
+    count_hot = (ring_temp > 125).float().sum()
     
     # 5. Count the total number of ring pixels.
     total_ring = ring_mask.sum()
     
     # Avoid division by zero.
     epsilon = 1e-6
-    ratio_loss = count_over / (total_ring + epsilon)
+    ratio_loss = count_hot / (total_ring + epsilon)
+
+    print(f"ratio loss: {ratio_loss}")
     
     # Return as a tensor (the result of torch operations is already a tensor).
     return ratio_loss
@@ -103,7 +120,8 @@ def train_epoch(model, loader, optimizer, scaler, epoch, loss_func, args):
             data, target = batch_data["image"], batch_data["label"]
             
         data, target = data.cuda(args.rank), target.cuda(args.rank)
-        temp_cube = data.cuda(2) # rank 2 is the temperature cube
+
+        temp_cube = data[:, 2, :, :, :] # rank 2 is the temperature cube
         
         # Zero gradients
         for param in model.parameters():
