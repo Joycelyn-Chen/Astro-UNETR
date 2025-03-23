@@ -18,7 +18,7 @@ parser.add_argument("--data_dir", default="/dataset/dataset0/", type=str, help="
 parser.add_argument("--output_dir", default="/dataset/dataset0/", type=str, help="output directory")
 parser.add_argument("--exp_name", default="test1", type=str, help="experiment name")
 parser.add_argument("--json_list", default="dataset_0.json", type=str, help="dataset json file")
-parser.add_argument("--fold", default=1, type=int, help="data fold")
+parser.add_argument("--fold", default=0, type=int, help="data fold")  # original default is 1, but somehow has to set to 0 to be reading fold 1 as testing set
 parser.add_argument("--pretrained_model_name", default="model.pt", type=str, help="pretrained model name")
 parser.add_argument("--feature_size", default=48, type=int, help="feature size")
 parser.add_argument("--infer_overlap", default=0.6, type=float, help="sliding window inference overlap")
