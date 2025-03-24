@@ -84,6 +84,7 @@ parser.add_argument("--smooth_dr", default=1e-6, type=float, help="constant adde
 parser.add_argument("--smooth_nr", default=0.0, type=float, help="constant added to dice numerator to avoid zero")
 parser.add_argument("--use_checkpoint", action="store_true", help="use gradient checkpointing to save memory")
 parser.add_argument("--spatial_dims", default=3, type=int, help="spatial dimension of input data")
+parser.add_argument("--use_r_loss", action="store_true", help="enabled ratio loss")
 parser.add_argument(
     "--pretrained_dir",
     default="./pretrained_models/fold1_f48_ep300_4gpu_dice0_9059/",
