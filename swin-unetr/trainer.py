@@ -25,6 +25,9 @@ from utils.utils import AverageMeter, distributed_all_gather
 from monai.data import decollate_batch
 
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
+
+DEBUG = True
 
 def morphological_difference(mask: torch.Tensor) -> torch.Tensor:
     """
@@ -63,8 +66,19 @@ def morphological_difference(mask: torch.Tensor) -> torch.Tensor:
     else:
         raise ValueError("Unsupported mask dimensions. Expected 4D or 5D tensor.")
         
+    
+
     ring = mask - eroded_binary
     ring = (ring > 0).float()
+
+    if(DEBUG):
+        print(f"Ring sized: {ring.size()}")
+        # Save an image at z = 64 if the ring has 3D spatial dimensions.
+        if ring.dim() == 5 and ring.size(2) > 64:
+            # Extract the slice at z = 64, converting to a numpy array.
+            slice_z = ring[0, 0, :, :, 64].detach().cpu().numpy() * 255
+            plt.imsave("ring_slice_z64.png", slice_z, cmap="gray")
+
     return ring
 
 def r_loss(pred_mask, temp_cube):
@@ -134,16 +148,20 @@ def train_epoch(model, loader, optimizer, scaler, epoch, loss_func, args):
             # Compute the original dice loss
             dice_loss_val = loss_func(logits, target)
             
-            # Convert logits to a binary segmentation mask
-            pred_mask = (torch.sigmoid(logits) > 0.5).float()
             
-            # Compute the r_loss (ratio loss) using the predicted mask and the temperature cube
-            # Here we assume that the input data contains the temperature cube information.
-            r_loss_val = r_loss(pred_mask, temp_cube)
-            r_loss_val = r_loss_val.to(dtype=dice_loss_val.dtype, device=dice_loss_val.device)
-            
-            # Total loss is the sum of dice loss and ratio loss
-            total_loss = dice_loss_val + r_loss_val
+            if (args.use_r_loss):
+                # Convert logits to a binary segmentation mask
+                pred_mask = (torch.sigmoid(logits) > 0.5).float()
+                
+                # Compute the r_loss (ratio loss) using the predicted mask and the temperature cube
+                # Here we assume that the input data contains the temperature cube information.
+                r_loss_val = r_loss(pred_mask, temp_cube)
+                r_loss_val = r_loss_val.to(dtype=dice_loss_val.dtype, device=dice_loss_val.device)
+                
+                # Total loss is the sum of dice loss and ratio loss
+                total_loss = dice_loss_val + r_loss_val
+            else:
+                total_loss = dice_loss_val
         
         # Backward pass and optimizer step
         if args.amp:
