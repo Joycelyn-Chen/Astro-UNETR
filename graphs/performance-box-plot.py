@@ -6,6 +6,7 @@ import nibabel as nib
 import numpy as np
 import matplotlib.pyplot as plt
 from monai.metrics import DiceMetric
+import argparse
 
 # python performance-box-plot.py --root_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/results-output/ --gt_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/test/masks
 
@@ -18,15 +19,15 @@ exp_root = {
             "epoch 300": "swin-unetr-epoch300"
         },
         "multi-modal": {
-            "epoch 0": "astro-unetr-multimodal",
+            "epoch 0": "astro-unetr-multimodal-epoch0",
             "epoch 100": "astro-unetr-multimodal-epoch100",
             "epoch 200": "astro-unetr-multimodal-epoch200",
-            "epoch 300": "astro-unetr-multimodal-epoch300"
+            "epoch 300": ""
         },
         "r-loss": {
             "epoch 0": "",
             "epoch 100": "astro-unetr-r-loss-epoch100",
-            "epoch 200": "astro-unetr-r-loss-epoch200",
+            "epoch 200": "",
             "epoch 300": ""
         }
     }
@@ -82,26 +83,43 @@ def main():
     # Loop over categories and experiment cases.
     for category, experiments in exp_root.items():
         results[category] = {}
+        print(f"Processing category: {category}")
+
         for epoch_label, folder in experiments.items():
             if not folder:  # Skip experiments with empty folder names.
                 continue
+
+            print(f"  Processing exp: {epoch_label}")
+
             exp_dir = os.path.join(args.root_dir, folder, "masks-output")
             pred_files = sorted(glob.glob(os.path.join(exp_dir, "*.nii.gz")))
-            gt_files = sorted(glob.glob(os.path.join(args.gt_dir, "*.nii.gz")))
-            
-            if len(pred_files) != len(gt_files):
-                print(f"Warning: For {category} {epoch_label} the number of prediction files does not match ground truth files.")
+            gt_files = sorted(glob.glob(os.path.join(args.gt_dir, "*seg.nii.gz")))
+
+            # Create a lookup dictionary for ground truth files based on filename.
+            gt_file_dict = {os.path.basename(gt_file).split(".")[0]: gt_file for gt_file in gt_files}
+
+            if len(pred_files) < len(gt_files):
+                print(f"Notice: For {category} {epoch_label}, missing predictions: found {len(pred_files)} instead of {len(gt_files)}.")
+            elif len(pred_files) > len(gt_files):
+                print(f"Warning: For {category} {epoch_label}, found more predictions than ground truth files.")
             
             dice_scores = []
-            # Assuming that the sorted file lists correspond to the same test cases.
-            for pred_file, gt_file in zip(pred_files, gt_files):
-                try:
-                    dice_val = compute_dice(pred_file, gt_file)
-                    dice_scores.append(dice_val)
-                except Exception as e:
-                    print(f"Error processing files:\n  {pred_file}\n  {gt_file}\nError: {e}")
+            # Iterate over the prediction files and match with the corresponding ground truth file.
+            for pred_file in pred_files:
+                pred_filename = os.path.basename(pred_file).split(".")[0]
+
+                if pred_filename in gt_file_dict:
+                    gt_file = gt_file_dict[pred_filename]
+                    try:
+                        dice_val = compute_dice(pred_file, gt_file)
+                        dice_scores.append(dice_val)
+                    except Exception as e:
+                        print(f"Error processing files:\n  {pred_file}\n  {gt_file}\nError: {e}")
+                else:
+                    print(f"Warning: No matching ground truth file found for prediction file {pred_filename}")
             results[category][epoch_label] = dice_scores
             print(f"Category '{category}', {epoch_label}: computed {len(dice_scores)} dice scores")
+
     
     # --- Plotting ---
     fig, ax = plt.subplots(figsize=(10, 6))
