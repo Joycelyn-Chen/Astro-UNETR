@@ -117,7 +117,7 @@ def main():
                         print(f"Error processing files:\n  {pred_file}\n  {gt_file}\nError: {e}")
                 else:
                     print(f"Warning: No matching ground truth file found for prediction file {pred_filename}")
-            results[category][epoch_label] = dice_scores
+            results[category][epoch_label] = dice_scores * 100
             print(f"Category '{category}', {epoch_label}: computed {len(dice_scores)} dice scores")
 
     
@@ -173,10 +173,10 @@ def main():
         ax.plot(x_vals, medians, marker='o', linestyle='-', color=line_color, label=category)
     
     # Set x-axis ticks at the standard epoch values.
-    ax.set_xticks([0, 100, 200, 300])
+    ax.set_xticks([0, 100, 200, 300], labels=["Epoch 0", "Epoch 100", "Epoch 200", "Epoch 300"])
     ax.set_xlabel("Training Epoch")
-    ax.set_ylabel("Dice Score")
-    ax.set_title("Box Plot of Dice Score Performance Across Experiment Cases")
+    ax.set_ylabel("Dice Score (%)")
+    ax.set_title("Box Plot of Dice Score Performance")
     ax.legend()
     plt.tight_layout()
     # plt.show()
