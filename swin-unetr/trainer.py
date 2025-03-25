@@ -27,7 +27,7 @@ from monai.data import decollate_batch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-DEBUG = True
+DEBUG = False
 
 def morphological_difference(mask: torch.Tensor) -> torch.Tensor:
     """
