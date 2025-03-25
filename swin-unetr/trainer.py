@@ -31,15 +31,23 @@ DEBUG = True
 
 def morphological_difference(mask: torch.Tensor) -> torch.Tensor:
     """
-    Extracts the exterior ring from a binary segmentation mask.
+    Extracts the exterior ring from a binary segmentation mask by first eroding the mask,
+    then dilating the eroded mask, and finally subtracting the eroded result from the dilated one.
     
     Supports both 2D and 3D masks.
     
     If the input mask has shape [N, C, H, W] (2D) or [N, C, D, H, W] (3D),
     and if C > 1, the first channel is used.
     
-    For 2D, erosion is performed using a 3x3 kernel (threshold = 9).
-    For 3D, erosion is performed using a 3x3x3 kernel (threshold = 27).
+    For 2D:
+      - Erosion is performed using a 3x3 kernel (threshold = 9).
+      - Dilation is performed using a 9x9 kernel.
+    For 3D:
+      - Erosion is performed using a 3x3x3 kernel (threshold = 27).
+      - Dilation is performed using a 9x9x9 kernel.
+    
+    The resulting ring is computed as:
+         ring = (dilated_mask - eroded_mask) > 0
     
     Args:
         mask (torch.Tensor): Binary mask tensor of shape [N, C, H, W] or [N, C, D, H, W].
@@ -47,38 +55,53 @@ def morphological_difference(mask: torch.Tensor) -> torch.Tensor:
     Returns:
         torch.Tensor: Binary mask of the exterior ring with the same spatial dimensions.
     """
-    if mask.dim() == 5:  # 3D input
+    if mask.dim() == 5:  # 3D input: [N, C, D, H, W]
         # If more than one channel is provided, take the first channel.
         if mask.size(1) > 1:
             mask = mask[:, 0:1, :, :, :]
-        # Create a 3x3x3 kernel.
-        kernel = torch.ones((1, 1, 3, 3, 3), device=mask.device, dtype=mask.dtype)
-        # Convolve to simulate erosion (padding=1 keeps the same size).
-        eroded = F.conv3d(mask, kernel, padding=1)
+        # --- Erosion with a 3x3x3 kernel ---
+        kernel_erode = torch.ones((1, 1, 3, 3, 3), device=mask.device, dtype=mask.dtype)
+        eroded = F.conv3d(mask, kernel_erode, padding=1)
         # A voxel remains only if all 27 in its 3x3x3 neighborhood are 1.
         eroded_binary = (eroded == 27).float()
-    elif mask.dim() == 4:  # 2D input
+        
+        # --- Dilation with a 9x9x9 kernel ---
+        kernel_dilate = torch.ones((1, 1, 9, 9, 9), device=mask.device, dtype=mask.dtype)
+        # Use padding=4 to keep the same spatial dimensions (floor(9/2) = 4).
+        dilated = F.conv3d(eroded_binary, kernel_dilate, padding=4)
+        # For dilation, if any voxel in the neighborhood is 1 then output is 1.
+        dilated_binary = (dilated > 0).float()
+        
+    elif mask.dim() == 4:  # 2D input: [N, C, H, W]
         if mask.size(1) > 1:
             mask = mask[:, 0:1, :, :]
-        kernel = torch.ones((1, 1, 3, 3), device=mask.device, dtype=mask.dtype)
-        eroded = F.conv2d(mask, kernel, padding=1)
+        # --- Erosion with a 3x3 kernel ---
+        kernel_erode = torch.ones((1, 1, 3, 3), device=mask.device, dtype=mask.dtype)
+        eroded = F.conv2d(mask, kernel_erode, padding=1)
         eroded_binary = (eroded == 9).float()
+        
+        # --- Dilation with a 9x9 kernel ---
+        kernel_dilate = torch.ones((1, 1, 9, 9), device=mask.device, dtype=mask.dtype)
+        dilated = F.conv2d(eroded_binary, kernel_dilate, padding=4)
+        dilated_binary = (dilated > 0).float()
+        
     else:
         raise ValueError("Unsupported mask dimensions. Expected 4D or 5D tensor.")
-        
     
+    binary_mask = (mask > 0).float()
 
-    ring = mask - eroded_binary
-    ring = (ring > 0).float()
-
-    if(DEBUG):
-        print(f"Ring sized: {ring.size()}")
-        # Save an image at z = 64 if the ring has 3D spatial dimensions.
+    # Calculate the ring as the difference between the dilated and eroded binary masks.
+    ring = dilated_binary - binary_mask #eroded_binary
+    ring = (ring > 0).float()  # Ensure the ring is binary.
+    
+    if DEBUG:
+        # print(f"Ring sized: {ring.size()}")
+        # For 3D inputs, save an image from the slice at z = 64.
         if ring.dim() == 5 and ring.size(2) > 64:
-            # Extract the slice at z = 64, converting to a numpy array.
-            slice_z = ring[0, 0, :, :, 64].detach().cpu().numpy() * 255
+            # Extract the slice at z = 64 (using zero-based indexing).
+            slice_z = ring[0, 0, 64, :, :].detach().cpu().numpy() * 255
             plt.imsave("ring_slice_z64.png", slice_z, cmap="gray")
-
+    
     return ring
 
 def r_loss(pred_mask, temp_cube):
@@ -103,19 +126,33 @@ def r_loss(pred_mask, temp_cube):
     ring_mask = morphological_difference(pred_mask)
     
     # 3. Apply the ring mask to the temperature cube.
-    ring_temp = temp_cube * ring_mask
+    # If temp_cube is missing a channel dimension compared to ring_mask, add it.
+    if ring_mask.dim() == 5 and temp_cube.dim() == 4:
+        temp_cube = temp_cube.unsqueeze(1)  # Now temp_cube becomes [N, 1, H, W, D]
+
+     # Apply threshold on the temperature cube first.
+    hot_indicator = (temp_cube > -0.05).float()
     
-    # 4. Count the number of ring pixels with temperature > 125.
-    count_hot = (ring_temp > 125).float().sum()
+    # Multiply by the ring mask to count only the masked area.
+    count_hot = (hot_indicator * ring_mask).sum()
     
-    # 5. Count the total number of ring pixels.
+    # Count the total number of elements in the masked area.
     total_ring = ring_mask.sum()
+
+    if DEBUG:
+        print(f"hot vol: {count_hot}")
+        print(f"total vol: {total_ring}")
+        slice_z = temp_cube[0, 0, 64, :, :].detach().cpu().numpy()
+        plt.imsave("temp_z64.png", slice_z, cmap="gray")
+        
+        
     
     # Avoid division by zero.
     epsilon = 1e-6
     ratio_loss = count_hot / (total_ring + epsilon)
 
-    print(f"ratio loss: {ratio_loss}")
+    if DEBUG:
+        print(f"ratio loss: {ratio_loss}\n")
     
     # Return as a tensor (the result of torch operations is already a tensor).
     return ratio_loss
@@ -136,6 +173,10 @@ def train_epoch(model, loader, optimizer, scaler, epoch, loss_func, args):
         data, target = data.cuda(args.rank), target.cuda(args.rank)
 
         temp_cube = data[:, 2, :, :, :] # rank 2 is the temperature cube
+
+        if DEBUG:
+            slice_z = data[:, 1, :, :, :][0, 64, :, :].detach().cpu().numpy()
+            plt.imsave("dens_z64.png", slice_z, cmap="gray")
         
         # Zero gradients
         for param in model.parameters():
