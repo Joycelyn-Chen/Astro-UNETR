@@ -104,12 +104,12 @@ def get_loader(args):
             transforms.RandSpatialCropd(
                 keys=["image", "label"], roi_size=[args.roi_x, args.roi_y, args.roi_z], random_size=False
             ),
-            transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
-            transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=1),
-            transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=2),
+            # transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=0),
+            # transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=1),
+            # transforms.RandFlipd(keys=["image", "label"], prob=0.5, spatial_axis=2),
             transforms.NormalizeIntensityd(keys="image", nonzero=True, channel_wise=True),
-            transforms.RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
-            transforms.RandShiftIntensityd(keys="image", offsets=0.1, prob=1.0),
+            # transforms.RandScaleIntensityd(keys="image", factors=0.1, prob=1.0),
+            # transforms.RandShiftIntensityd(keys="image", offsets=0.1, prob=1.0),
             transforms.ToTensord(keys=["image", "label"]),
         ]
     )
