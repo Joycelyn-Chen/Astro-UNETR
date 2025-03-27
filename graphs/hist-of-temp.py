@@ -10,7 +10,7 @@ import argparse
 DEBUG = True
 hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
 
-# python hist-of-temp.py --hdf5_root /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc --mask_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/hist-of-temp/ratio --start_timestamp 380 --end_timestamp 480 -i 10
+# python hist-of-temp.py --hdf5_root /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc --mask_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/hist-of-temp/ratio --start_timestamp 380 --end_timestamp 670 -i 10
 
 def load_mask_cube(mask_root, timestamp, cube_dim=256):
     """
@@ -264,7 +264,7 @@ def plot_ratio(temp_dict, ratio_dict, output_file):
     plt.grid(True, linestyle='--', linewidth=0.5)
     plt.ylim(0, 1)
     
-    plt.legend(fontsize=12, loc='best', frameon=True, fancybox=True, shadow=True)
+    plt.legend(fontsize=18, loc='best', frameon=True, fancybox=True, shadow=True)
     
     plt.tight_layout()
     plt.savefig(output_file, dpi=300)
