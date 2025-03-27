@@ -4,16 +4,13 @@ import yt
 import cv2 as cv
 from PIL import Image
 from matplotlib import pyplot as plt
-# from utils import *
 import argparse
 
 k = yt.physical_constants.kb
 mu = 1.4
 m_H = yt.physical_constants.mass_hydrogen
 
-
-import matplotlib.pyplot as plt
-import os
+# python analysis/plot_vol_energy.py --mask_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --hdf5_root /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230
 
 def count_white_pixels(image_path):
     """Count the number of white pixels in an image."""
@@ -62,7 +59,7 @@ def plot_energy_volume(timeMyrs, kinetic_energies, thermal_energies, total_energ
     # Adding labels and title
     ax1.set_xlabel('Time (Myr)', fontsize=18)
     ax1.set_ylabel('Energy (J)', fontsize=18, color='black')
-    ax1.tick_params(axis='y', labelcolor='black')
+    ax1.tick_params(axis='y', labelcolor='black', labelsize=20)
     
     ax2 = ax1.twinx()
     ax2.plot(timeMyrs, total_volumes, label='Total Volume ($pc^3$)', color='#CD5C08', linestyle='solid', linewidth=2.5, marker='o') # #DDB665
@@ -70,7 +67,7 @@ def plot_energy_volume(timeMyrs, kinetic_energies, thermal_energies, total_energ
     # Set logarithmic scale and color for the volume axis
     ax2.set_yscale('log')
     ax2.set_ylabel('Volume ($pc^3$)', fontsize=18, color='#CD5C08')
-    ax2.tick_params(axis='y', labelcolor='#CD5C08')
+    ax2.tick_params(axis='y', labelcolor='#CD5C08', labelsize=20)
     
     # Adding grid for better readability
     ax1.grid(True, which="both", linestyle='--', linewidth=0.5, color='gray')
@@ -78,7 +75,7 @@ def plot_energy_volume(timeMyrs, kinetic_energies, thermal_energies, total_energ
     # Customizing the legend
     lines, labels = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines + lines2, labels + labels2, fontsize=12, loc='best', frameon=True, fancybox=True, shadow=True)
+    ax1.legend(lines + lines2, labels + labels2, fontsize=20, loc='best', frameon=True, fancybox=True) #, shadow=True)
 
     
     # Adjusting layout for better spacing
@@ -86,6 +83,8 @@ def plot_energy_volume(timeMyrs, kinetic_energies, thermal_energies, total_energ
     
     # Save the figure to the specified output root
     plt.savefig(os.path.join(output_root, 'energy_volume.png'), dpi=300)
+
+    print(f"Done. Plot saved at: {os.path.join(output_root, 'energy_volume.png')}")
 
 
 
@@ -178,7 +177,6 @@ if __name__ == "__main__":
     parser.add_argument('-pixb', '--pixel_boundary', help='Input the pixel resolution', default = 256, type = int)
     
   
-    # python analysis/plot_vol_energy.py --mask_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --hdf5_root /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230
     args = parser.parse_args()
     main(args)
 
