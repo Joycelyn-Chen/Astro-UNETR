@@ -52,8 +52,9 @@ def saving_k3d_plots(args, time_Myr, temp_cube_roi, temp_target_roi, converted_p
     coords_whole_cube = np.argwhere(~np.isnan(temp_cube_roi))
     coords_target = np.argwhere(~np.isnan(temp_target_roi))
 
-    values_whole_cube = np.log10(temp_cube_roi[coords_whole_cube[:, 0], coords_whole_cube[:, 1], coords_whole_cube[:, 2]])
-    values_target = np.log10(temp_target_roi[coords_target[:, 0], coords_target[:, 1], coords_target[:, 2]])
+    epsilon = 1e-6
+    values_whole_cube = np.log10(temp_cube_roi[coords_whole_cube[:, 0], coords_whole_cube[:, 1], coords_whole_cube[:, 2]] + epsilon)
+    values_target = np.log10(temp_target_roi[coords_target[:, 0], coords_target[:, 1], coords_target[:, 2]] + epsilon)
 
     cube_points = k3d.points(positions=coords_whole_cube,
                             point_size=1,
