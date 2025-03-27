@@ -14,7 +14,7 @@ hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
 low_x0, low_y0, low_w, low_h, bottom_z, top_z = 0, 0, 1000, 1000, 0, 1000
 range_coord = [low_x0, low_y0, low_w, low_h, bottom_z, top_z]
 
-# python post-process/temp3d_SN_visualization.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -m ~/Desktop/Dataset/MHD-3DIS/SB_tracks/230 -k /home/joy0921/Desktop/Dataset/MHD-3DIS/htmls -st 380 -et 420 -i 10
+# python post-process/temp3d_SN_visualization.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -m ~/Desktop/Dataset/MHD-3DIS/SB_tracks/230 -k /home/joy0921/Desktop/Dataset/MHD-3DIS/htmls/SB230 -st 380 -et 420 -i 10
 
 
 
@@ -53,8 +53,8 @@ def saving_k3d_plots(args, time_Myr, temp_cube_roi, temp_target_roi, converted_p
     coords_target = np.argwhere(~np.isnan(temp_target_roi))
 
     epsilon = 1e-6
-    values_whole_cube = np.log10(temp_cube_roi[coords_whole_cube[:, 0], coords_whole_cube[:, 1], coords_whole_cube[:, 2]] + epsilon)
-    values_target = np.log10(temp_target_roi[coords_target[:, 0], coords_target[:, 1], coords_target[:, 2]] + epsilon)
+    values_whole_cube = np.log10(temp_cube_roi[coords_whole_cube[:, 0], coords_whole_cube[:, 1], coords_whole_cube[:, 2]]+ epsilon)
+    values_target = np.log10(temp_target_roi[coords_target[:, 0], coords_target[:, 1], coords_target[:, 2]]+ epsilon)
 
     cube_points = k3d.points(positions=coords_whole_cube,
                             point_size=1,
@@ -93,11 +93,11 @@ def saving_k3d_plots(args, time_Myr, temp_cube_roi, temp_target_roi, converted_p
     # plot.display()
 
     
-    with open(os.path.join(args.k3d_root, f'{time_Myr}-t.html'),'w') as fp:
+    with open(os.path.join(args.k3d_root, f'{time_Myr}-temp.html'),'w') as fp:
         fp.write(plot.get_snapshot())
 
     if(DEBUG):
-        print("Done. Plot file stored at {}".format(f'{args.k3d_root}/{time_Myr}-t.html'))
+        print("Done. Plot file stored at {}".format(f'{args.k3d_root}/{time_Myr}-temp.html'))
 
 
 def saving_SN_in_bound(args, time_Myr, filtered_data, mask_target):
@@ -155,7 +155,7 @@ def main(args):
         z_range_scaled = (args.lower_bound, args.upper_bound)
 
         # center_x, center_y, center_z = args.pixel_boundary // 2, args.pixel_boundary // 2, args.pixel_boundary // 2
-        _, _, temp_cube = get_velz_dens(obj, x_range_scaled, y_range_scaled, z_range_scaled)
+        _, dens_cube, temp_cube = get_velz_dens(obj, x_range_scaled, y_range_scaled, z_range_scaled)
         # new_velx, new_vely = get_velx_vely(obj, x_range_scaled, y_range_scaled, z_range_scaled)
 
         # Reading all the SN within the last Myr
@@ -171,7 +171,7 @@ def main(args):
         
         mask_cube = np.zeros((args.pixel_boundary, args.pixel_boundary, args.upper_bound - args.lower_bound))
         # mask_cube = segment_cube_roi(args, dens_cube, mask_cube)
-        mask_cube = segment_cube_roi(args, temp_cube, temp_cube, mask_cube)
+        mask_cube = segment_cube_roi(args, dens_cube, mask_cube, temp_cube)
 
         # velz_cube_roi = np.where(mask_cube, velz_cube[:, :, args.lower_bound:args.upper_bound], np.nan)
         temp_cube_roi = np.where(mask_cube, temp_cube[:, :, args.lower_bound:args.upper_bound], np.nan)
@@ -188,7 +188,7 @@ def main(args):
         saving_k3d_plots(args, time_Myr, temp_cube_roi, temp_target_roi, converted_points)
 
         # Record SN in bound
-        saving_SN_in_bound(args, time_Myr, filtered_data, mask_target)
+        # saving_SN_in_bound(args, time_Myr, filtered_data, mask_target)
 
 
 if __name__ == '__main__':
