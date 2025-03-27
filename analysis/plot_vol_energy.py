@@ -57,16 +57,17 @@ def plot_energy_volume(timeMyrs, kinetic_energies, thermal_energies, total_energ
     ax1.set_yscale('log')
     
     # Adding labels and title
-    ax1.set_xlabel('Time (Myr)', fontsize=18)
-    ax1.set_ylabel('Energy (J)', fontsize=18, color='black')
+    ax1.set_xlabel('Time (Myr)', fontsize=22)
+    ax1.set_ylabel('Energy (J)', fontsize=22, color='black')
     ax1.tick_params(axis='y', labelcolor='black', labelsize=20)
+    ax1.tick_params(axis='x', labelsize=20)
     
     ax2 = ax1.twinx()
     ax2.plot(timeMyrs, total_volumes, label='Total Volume ($pc^3$)', color='#CD5C08', linestyle='solid', linewidth=2.5, marker='o') # #DDB665
     
     # Set logarithmic scale and color for the volume axis
     ax2.set_yscale('log')
-    ax2.set_ylabel('Volume ($pc^3$)', fontsize=18, color='#CD5C08')
+    ax2.set_ylabel('Volume ($pc^3$)', fontsize=22, color='#CD5C08')
     ax2.tick_params(axis='y', labelcolor='#CD5C08', labelsize=20)
     
     # Adding grid for better readability
