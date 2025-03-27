@@ -23,8 +23,8 @@ def main(args):
         slice_filename = f"sn34_smd132_bx5_pe300_hdf5_plt_cnt_0{slice_timestamp}"
         slice_ds = yt.load(os.path.join(args.hdf5_root, slice_filename))
         slp = yt.SlicePlot(slice_ds, 'z', 'dens', center = [0, 0, args.center_z] * yt.units.pc)
-        slp.annotate_timestamp()
-        slp.annotate_scale()
+        slp.annotate_timestamp(text_args={'size': 40})
+        slp.annotate_scale(text_args={'size': 40})
         slp.save(os.path.join(args.output_root, f'{slice_time_Myr}.png'))
     
     print(f"Done! Plots saved at {args.output_root}")
