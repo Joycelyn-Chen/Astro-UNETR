@@ -22,12 +22,12 @@ exp_root = {
             "epoch 0": "astro-unetr-multimodal-epoch0",
             "epoch 100": "astro-unetr-multimodal-epoch100",
             "epoch 200": "astro-unetr-multimodal-epoch200",
-            "epoch 300": ""
+            "epoch 300": "astro-unetr-multimodal-epoch300"
         },
         "r-loss": {
             "epoch 0": "",
             "epoch 100": "astro-unetr-r-loss-epoch100",
-            "epoch 200": "",
+            "epoch 200": "astro-unetr-r-loss-epoch200",
             "epoch 300": ""
         }
     }
