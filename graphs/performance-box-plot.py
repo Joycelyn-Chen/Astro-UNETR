@@ -174,10 +174,11 @@ def main():
     
     # Set x-axis ticks at the standard epoch values.
     ax.set_xticks([0, 100, 200, 300], labels=["Epoch 0", "Epoch 100", "Epoch 200", "Epoch 300"])
-    ax.set_xlabel("Training Epoch")
-    ax.set_ylabel("Dice Score (%)")
+    ax.tick_params(axis='y', labelsize=20)
+    ax.set_xlabel("Training Epoch", fontsize=22)
+    ax.set_ylabel("Dice Score (%)", fontsize=22)
     ax.set_title("Box Plot of Dice Score Performance")
-    ax.legend()
+    ax.legend(fontsize=20, loc='best', frameon=True, fancybox=True)
     plt.tight_layout()
     # plt.show()
     plt.savefig("plots/peformace-box-plot.png")
