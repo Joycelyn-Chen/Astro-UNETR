@@ -12,6 +12,7 @@ m_H = yt.physical_constants.mass_hydrogen
 
 # python analysis/plot_vol_energy.py --mask_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230 --hdf5_root /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc --output_root /home/joy0921/Desktop/Dataset/MHD-3DIS/SB_tracks/230
 
+
 def count_white_pixels(image_path):
     """Count the number of white pixels in an image."""
     with Image.open(image_path) as img:
@@ -51,7 +52,7 @@ def plot_energy_volume(timeMyrs, kinetic_energies, thermal_energies, total_energ
     # supernovae energy injection
     one_hot_explosion = [1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1]
     E_sn = [num * 1e44 for num in one_hot_explosion]
-    ax1.plot(timeMyrs, E_sn, 'r+') 
+    ax1.plot(timeMyrs, E_sn, 'r+', label='SN Injection', markersize=14)
 
     # Set logarithmic scale for the y-axis
     ax1.set_yscale('log')
@@ -63,12 +64,12 @@ def plot_energy_volume(timeMyrs, kinetic_energies, thermal_energies, total_energ
     ax1.tick_params(axis='x', labelsize=20)
     
     ax2 = ax1.twinx()
-    ax2.plot(timeMyrs, total_volumes, label='Total Volume ($pc^3$)', color='#CD5C08', linestyle='solid', linewidth=2.5, marker='o') # #DDB665
+    ax2.plot(timeMyrs, total_volumes, label='Total Volume ($pc^3$)', color='#82659D', linestyle='solid', linewidth=2.5, marker='o') # #DDB665
     
     # Set logarithmic scale and color for the volume axis
     ax2.set_yscale('log')
-    ax2.set_ylabel('Volume ($pc^3$)', fontsize=22, color='#CD5C08')
-    ax2.tick_params(axis='y', labelcolor='#CD5C08', labelsize=20)
+    ax2.set_ylabel('Volume ($pc^3$)', fontsize=22, color='#82659D')
+    ax2.tick_params(axis='y', labelcolor='#82659D', labelsize=20)
     
     # Adding grid for better readability
     ax1.grid(True, which="both", linestyle='--', linewidth=0.5, color='gray')
@@ -144,6 +145,7 @@ def main(args):
             continue
         #DEBUG
         print(f"Processing {timestamp}")
+
         hdf5_filename = os.path.join(args.hdf5_root, f"{args.file_prefix}{timestamp}")
         timestamp_energy = calc_energy_vol(args, hdf5_filename, args.mask_root, timestamp)
         energy_data[timestamp] = timestamp_energy
