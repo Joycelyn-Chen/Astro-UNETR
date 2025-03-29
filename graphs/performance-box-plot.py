@@ -22,12 +22,12 @@ exp_root = {
             "epoch 0": "astro-unetr-multimodal-epoch0",
             "epoch 100": "astro-unetr-multimodal-epoch100",
             "epoch 200": "astro-unetr-multimodal-epoch200",
-            "epoch 300": ""
+            "epoch 300": "astro-unetr-multimodal-epoch300"
         },
         "r-loss": {
             "epoch 0": "",
             "epoch 100": "astro-unetr-r-loss-epoch100",
-            "epoch 200": "",
+            "epoch 200": "astro-unetr-r-loss-epoch200",
             "epoch 300": ""
         }
     }
@@ -174,10 +174,11 @@ def main():
     
     # Set x-axis ticks at the standard epoch values.
     ax.set_xticks([0, 100, 200, 300], labels=["Epoch 0", "Epoch 100", "Epoch 200", "Epoch 300"])
-    ax.set_xlabel("Training Epoch")
-    ax.set_ylabel("Dice Score (%)")
+    ax.tick_params(axis='y', labelsize=20)
+    ax.set_xlabel("Training Epoch", fontsize=22)
+    ax.set_ylabel("Dice Score (%)", fontsize=22)
     ax.set_title("Box Plot of Dice Score Performance")
-    ax.legend()
+    ax.legend(fontsize=20, loc='best', frameon=True, fancybox=True)
     plt.tight_layout()
     # plt.show()
     plt.savefig("plots/peformace-box-plot.png")
