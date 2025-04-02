@@ -10,7 +10,7 @@ from utils import *
 DEBUG = True
 hdf5_prefix = 'sn34_smd132_bx5_pe300_hdf5_plt_cnt_0'
 
-# python vel3d_SN_visualization.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -st 380 -et 380 -i 10
+# python vel3d_SN_visualization.py -hr /srv/data/stratbox_simulations/stratbox_particle_runs/bx5/smd132/sn34/pe300/4pc_resume/4pc -st 420 -et 420 -i 10
 
 def get_velocity_data(obj, x_range, y_range, z_range):
     """
@@ -46,27 +46,41 @@ def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, html
     if DEBUG:
         print(f"Original indices: {indices.shape}")
 
-    # Randomly reduce the number of vectors to half
+    # Randomly reduce the number of vectors to reduce clutter
     if len(indices) > 1:
         selected_indices = np.random.choice(len(indices), size=len(indices) // vel_stride, replace=False)
         indices = indices[selected_indices]
         origins = origins[selected_indices]
 
-    vectors = np.array([velx_masked[indices[:, 0], indices[:, 1], indices[:, 2]],
-                        vely_masked[indices[:, 0], indices[:, 1], indices[:, 2]],
-                        velz_masked[indices[:, 0], indices[:, 1], indices[:, 2]]]).T
+    # Compute raw vectors (before normalization)
+    raw_vectors = np.array([
+        velx_masked[indices[:, 0], indices[:, 1], indices[:, 2]],
+        vely_masked[indices[:, 0], indices[:, 1], indices[:, 2]],
+        velz_masked[indices[:, 0], indices[:, 1], indices[:, 2]]
+    ]).T
 
-    # Normalize vectors to the range [-1, 1]
-    max_vals = np.abs(vectors).max(axis=0)
-    vectors = vectors / max_vals
+    # Save raw vertical velocity for color mapping
+    raw_velz = raw_vectors[:, 2]
+
+    # Normalize vectors for visualization (arrow lengths/direction)
+    max_vals = np.abs(raw_vectors).max(axis=0)
+    vectors = raw_vectors / max_vals
 
     if DEBUG:
         print(f"New vectors: {vectors.shape}")
         print(f"Normalized vectors[0]: {vectors[0]}")
+        print(f"min: {vectors.min()}")
+        print(f"max: {vectors.max()}")
 
     scale = 20.0  # Adjust as needed
-    magnitude = np.linalg.norm(vectors, axis=1)
-    colors = k3d.helpers.map_colors(magnitude, k3d.matplotlib_color_maps.RdBu, [])
+
+    # Map colors using the raw vertical velocity
+    # Instead of using the full range [-1195, 1164], we use a narrower range (e.g., [-300, 300])
+    # to increase the contrast: values below -300 are saturated blue, above 300 are saturated red.
+    color_range = [-300, 300]  # Adjust this range based on your data distribution
+    colors = k3d.helpers.map_colors(raw_velz, k3d.matplotlib_color_maps.RdBu_r, color_range)
+    
+    # Duplicate colors for both the vector shaft and head
     vec_colors = np.zeros(2 * len(colors))
     for i, c in enumerate(colors):
         vec_colors[2 * i] = c
@@ -86,18 +100,101 @@ def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, html
 
     # Add explosion points
     SB_center = k3d.points(positions=np.array(converted_points, dtype=np.float32),
-                           point_size=1.0,
-                           shader='3d',
-                           opacity=1.0,
-                           color=0xc30010)
+                             point_size=1.0,
+                             shader='3d',
+                             opacity=1.0,
+                             color=0xc30010)
     fig += SB_center
 
-    # fig.display()
+    # Save the plot snapshot as an HTML file
     with open(os.path.join(html_root, f'{time_Myr}_vel.html'),'w') as fp:
         fp.write(fig.get_snapshot())
 
-    if(DEBUG):
+    if DEBUG:
         print("Done. Plot file stored at {}".format(f'{html_root}/{time_Myr}_vel.html'))
+
+
+# def visualize_velocity_field(velx, vely, velz, mask_cube, converted_points, html_root, time_Myr, vel_stride=40):
+#     """
+#     Visualize velocity field using k3d vectors.
+#     """
+#     # Masking the velocity components
+#     velx_masked = np.where(mask_cube, velx, np.nan)
+#     vely_masked = np.where(mask_cube, vely, np.nan)
+#     velz_masked = np.where(mask_cube, velz, np.nan)
+
+#     # Flatten and create 3D grid
+#     indices = np.argwhere(~np.isnan(velx_masked))
+#     origins = indices.astype(np.float32)
+
+#     if DEBUG:
+#         print(f"Original indices: {indices.shape}")
+
+#     # Randomly reduce the number of vectors to half
+#     if len(indices) > 1:
+#         selected_indices = np.random.choice(len(indices), size=len(indices) // vel_stride, replace=False)
+#         indices = indices[selected_indices]
+#         origins = origins[selected_indices]
+
+#     vectors = np.array([velx_masked[indices[:, 0], indices[:, 1], indices[:, 2]],
+#                         vely_masked[indices[:, 0], indices[:, 1], indices[:, 2]],
+#                         velz_masked[indices[:, 0], indices[:, 1], indices[:, 2]]]).T
+
+
+#     if DEBUG:
+#         print(f"min: {vectors.min()}")
+#         print(f"max: {vectors.max()}")
+
+#     # Normalize vectors to the range [-1, 1]
+#     max_vals = np.abs(vectors).max(axis=0)
+#     vectors = vectors / max_vals
+
+#     if DEBUG:
+#         print(f"New vectors: {vectors.shape}")
+#         print(f"Normalized vectors[0]: {vectors[0]}")
+#         print(f"min: {vectors.min()}")
+#         print(f"max: {vectors.max()}")
+
+#     scale = 20.0  # Adjust as needed
+
+#     # Use the normalized vertical (z) component for color mapping
+#     velz_component = vectors[:, 2]
+#     # Map z-component values from [-1, 1] to colors:
+#     # blue for negative values, white for zero, and red for positive values.
+#     colors = k3d.helpers.map_colors(velz_component, k3d.matplotlib_color_maps.RdBu_r, [-1, 1])
+    
+#     # k3d expects a color for both the vector shaft and head, so we duplicate each color
+#     vec_colors = np.zeros(2 * len(colors))
+#     for i, c in enumerate(colors):
+#         vec_colors[2 * i] = c
+#         vec_colors[2 * i + 1] = c
+#     vec_colors = vec_colors.astype(np.uint32)
+
+#     fig = k3d.plot()
+#     vec = k3d.vectors(
+#         origins=origins - vectors / 2,
+#         vectors=vectors * scale,
+#         colors=vec_colors,
+#         use_head=True,
+#         head_size=10,
+#         line_width=0.1
+#     )
+#     fig += vec
+
+#     # Add explosion points
+#     SB_center = k3d.points(positions=np.array(converted_points, dtype=np.float32),
+#                            point_size=1.0,
+#                            shader='3d',
+#                            opacity=1.0,
+#                            color=0xc30010)
+#     fig += SB_center
+
+#     # fig.display()
+#     with open(os.path.join(html_root, f'{time_Myr}_vel.html'),'w') as fp:
+#         fp.write(fig.get_snapshot())
+
+#     if(DEBUG):
+#         print("Done. Plot file stored at {}".format(f'{html_root}/{time_Myr}_vel.html'))
 
 def main(args):
     for timestamp in range(args.start_timestamp, args.end_timestamp + 1, args.incr):
