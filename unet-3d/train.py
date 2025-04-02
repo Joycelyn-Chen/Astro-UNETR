@@ -25,7 +25,7 @@ from monai.transforms import (
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 
 
-# python train.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs --exp_name unet-test --max_epochs 10 
+# python train.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs --exp_name unet-epoch300 --max_epochs 300
 
 def main():
     parser = argparse.ArgumentParser(description="UNet 3D Segmentation Training")
@@ -45,7 +45,7 @@ def main():
 
     # Use provided data_dir for images and segmentations
     data_dir = args.data_dir
-    images = sorted(glob.glob(os.path.join(data_dir, 'train', 'imgs', "*.nii.gz")))
+    images = sorted(glob.glob(os.path.join(data_dir, 'train', 'imgs-dens', "*.nii.gz")))
     segs = sorted(glob.glob(os.path.join(data_dir, 'train', 'masks', "*.seg.nii.gz")))
     if len(images) == 0 or len(segs) == 0:
         logging.error("No images or segmentations found in the data directory.")
