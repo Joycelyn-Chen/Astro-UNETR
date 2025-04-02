@@ -26,7 +26,7 @@ from monai.handlers import StatsHandler, TensorBoardStatsHandler, MLFlowHandler,
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.handlers import ModelCheckpoint
 
-# python train.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs --exp_name segresnet-test --max_epochs 10 
+# python train.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs --exp_name segresnet-epoch300 --max_epochs 300
 
 # Helper transform: duplicate single channel to 4 channels.
 def duplicate_channels(x):
@@ -81,7 +81,7 @@ def main():
     logging.info("Starting SegResNet training...")
 
     # Read training images and segmentation masks.
-    train_img_paths = sorted(glob.glob(os.path.join(args.data_dir, "train", "imgs", "*.nii.gz")))
+    train_img_paths = sorted(glob.glob(os.path.join(args.data_dir, "train", "imgs-dens", "*.nii.gz")))
     train_seg_paths = sorted(glob.glob(os.path.join(args.data_dir, "train", "masks", "*.seg.nii.gz")))
     if len(train_img_paths) == 0 or len(train_seg_paths) == 0:
         logging.error("No training images or segmentations found in the specified directory.")
