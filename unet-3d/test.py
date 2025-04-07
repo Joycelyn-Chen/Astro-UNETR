@@ -13,7 +13,7 @@ import numpy as np
 from monai.transforms import Compose, LoadImage, ScaleIntensity, EnsureChannelFirst, Resize, Activations, AsDiscrete
 from monai.networks.nets import UNet
 
-# python test.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/unet-test-epoch100/masks-output --model_path /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/unet-test/logs/net_checkpoint_40.pt
+# python test.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/unet-epoch300/masks-output --model_path /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/unet-test/logs/net_checkpoint_1200.pt
 
 def main():
     parser = argparse.ArgumentParser(description="UNet 3D Segmentation Inference")
