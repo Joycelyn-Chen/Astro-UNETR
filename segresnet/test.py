@@ -14,7 +14,7 @@ from monai.transforms import Compose, LoadImage, ScaleIntensity, EnsureChannelFi
 from monai.data import ArrayDataset, DataLoader
 from monai.networks.nets import SegResNet
 
-# python test.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/segresnet-test/masks-output --model_path /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/segresnet-test/logs/segresnet_checkpoint_10600.pt
+# python test.py --data_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/MHD-3DIS-NII/ --output_dir /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/segresnet-epoch300/masks-output --model_path /home/joycelyn/Desktop/Dataset/MHD-3DIS/result-outputs/segresnet-epoch300/logs/segresnet_checkpoint_36900.pt
 # ------------------------------------------------------------------------------
 # Duplicate channels helper function (same as used during training).
 def duplicate_channels(x):
