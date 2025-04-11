@@ -150,7 +150,7 @@ def main():
             img_copy = img_display.copy()  # Reset the display to the original image
             cv.line(img_copy, (x1, y1), (x2, y2), (0, 0, 255), thickness=2)
             cv.imshow("Image", img_copy)
-            cv.waitKey(0)
+            cv.waitKey(1)
             
             key = input("Are you satisfied with the line? (y/n): ")
             if key.lower() == 'y':
@@ -159,6 +159,7 @@ def main():
             else:
                 points = []  # Clear points to allow retry
 
+    
     
     # Plot results
     fig = plt.figure(figsize =(16, 10))
