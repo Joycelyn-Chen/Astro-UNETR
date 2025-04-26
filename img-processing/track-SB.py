@@ -19,9 +19,10 @@ import cv2
 import numpy as np
 import argparse
 
-# assume utils.py is in the same directory
+
 from utils import apply_otsus_thresholding, find_connected_components
 
+# python track-SB.py --dataset_root /home/joy0921/Desktop/Dataset/img_pix256/img --output_root /home/joy0921/Desktop/Dataset/Img_processing_output/SB230 --mid_slice 141 --init_x 178 --init_y 149 --start_t 380 --end_t 400
 
 def segment_and_select(image_path, point):
     """
@@ -94,6 +95,7 @@ def track_cube(slice_paths, mid_idx, init_point):
     return masks
 
 
+
 def segment_and_track(dataset_root, output_root, mid_slice, init_point, start_t=None, end_t=None):
     """
     Loop over timesteps, track bubble in each cube, and save masks.
@@ -119,12 +121,15 @@ def segment_and_track(dataset_root, output_root, mid_slice, init_point, start_t=
         # track within this cube
         masks = track_cube(slice_paths, mid_slice, current_pt)
         # write out
-        out_ts = os.path.join(output_root, ts)
+        out_ts = os.path.join(output_root, ts, 'mask')
         os.makedirs(out_ts, exist_ok=True)
         for idx, m in masks.items():
             out_name = os.path.splitext(files[idx])[0] + '.png'
             out_path = os.path.join(out_ts, out_name)
             cv2.imwrite(out_path, m)
+        
+        print(f"Done with t = {ts}, masks saved at: {out_ts}")
+
         # update init_point for next timestep based on centroid in mid slice
         mid_m = masks.get(mid_slice)
         M = cv2.moments(mid_m)
@@ -163,3 +168,4 @@ if __name__ == '__main__':
         args.start_t,
         args.end_t
     )
+ 
