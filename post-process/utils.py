@@ -28,8 +28,9 @@ def get_velz_dens(obj, x_range, y_range, z_range):
 
     # calculate the density as column density
     coldens = dens * dz / (1.4 * mp)
+    dens_part = dens / (1.4 * mp)
 
-    return velz, coldens, temp
+    return velz, dens_part, temp
 
 def get_velx_vely(obj, x_range, y_range, z_range):
     # read a 3D grid of vely and density array
