@@ -23,8 +23,8 @@ if __name__ == "__main__":
         time_Myr = timestamp2Myr(timestamp=timestamp)
         ds = yt.load(os.path.join(args.hdf5_root, filename))
         slc = yt.SlicePlot(ds, 'z', 'dens', center = [0, 0, 0] * yt.units.pc)
-        slc.annotate_timestamp(size=0.1, time_unit='Myr', corner='lower_left')
-        slc.annotate_scale(size=0.1)
+        slc.annotate_timestamp(time_unit='Myr', corner='lower_left', text_args={'fontsize':'x-large','color':'w'}) #draw_inset_box=True)
+        slc.annotate_scale(corner='lower_right', text_args={'fontsize':'x-large','color':'w'})
 
         slc.save(os.path.join(args.output_root, f'{time_Myr}.png'))
 
